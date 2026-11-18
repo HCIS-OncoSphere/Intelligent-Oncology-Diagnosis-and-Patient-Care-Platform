@@ -5,7 +5,7 @@ from patients.models import Patient
 class PatientManagementTests(AccountsTestBase):
     def test_patient_mrn_generated_automatically(self):
         self.assertTrue(self.patient_profile_1.mrn.startswith("MRN-"))
-        self.assertEqual(len(self.patient_profile_1.mrn), 12)  # "MRN-" + 8 hex chars
+        self.assertEqual(len(self.patient_profile_1.mrn), 16)  # "MRN-" + 12 hex chars
 
     def test_patient_sees_only_own_profile_in_list(self):
         self.login_user("patient_test", "PatientPassword123!")

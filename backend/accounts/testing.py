@@ -50,7 +50,9 @@ class AccountsTestBase(TestCase):
             role=User.Role.PATIENT,
         )
 
-        # Create Patient profiles if patients app is available
+        # Create Patient profiles if patients app is available.
+        # Only ImportError is caught — if the app IS installed, DB errors
+        # should not be silenced.
         try:
             from patients.models import Patient
             self.patient_profile_1 = Patient.objects.create(
@@ -71,7 +73,7 @@ class AccountsTestBase(TestCase):
                 cancer_type="Lung",
                 cancer_stage="Stage I",
             )
-        except (ImportError, Exception):
+        except ImportError:
             pass
 
     def login_user(self, username="admin_test", password="AdminPassword123!"):
