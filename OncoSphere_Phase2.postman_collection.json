@@ -1,0 +1,4270 @@
+{
+  "info": {
+    "name": "OncoSphere Phase 2 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folder 0 first (stores tokens), then run the folders in order, or use the Collection Runner on the whole collection. Seed users: admin/dr.salma/patient1."
+  },
+  "item": [
+    {
+      "name": "0 - Login (run first)",
+      "item": [
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_user}}\",\n  \"password\": \"{{admin_pass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_admin_token', String(j.access)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{doctor_user}}\",\n  \"password\": \"{{doctor_pass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_token', String(j.access)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{patient_user}}\",\n  \"password\": \"{{patient_pass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_patient_token', String(j.access)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login wrong password -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"nope\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.expect([401]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check: patient1 has a patient profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('patient1 has a patient profile. If this fails run: python manage.py seed', ()=>{ const j = pm.response.json(); pm.expect(Array.isArray(j) && j.length === 1).to.eql(true); });try { const j = pm.response.json(); pm.collectionVariables.set('onco_patient_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check: a doctor profile exists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/doctors/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('doctor profile exists. If this fails run: python manage.py seed', ()=>{ const j = pm.response.json(); pm.expect(Array.isArray(j) && j.length > 0).to.eql(true); });try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 - Auth and registration (F1, F2)",
+      "item": [
+        {
+          "name": "Register new patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"pm_{{$timestamp}}\",\n  \"password\": \"Secret1234\",\n  \"email\": \"pm@example.com\",\n  \"first_name\": \"Postman\",\n  \"last_name\": \"Tester\",\n  \"date_of_birth\": \"1995-03-10\",\n  \"gender\": \"F\",\n  \"phone\": \"01011112222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "pm.collectionVariables.set('onco_new_username', JSON.parse(pm.request.body.raw).username);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - missing fields -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as new patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{onco_new_username}}\",\n  \"password\": \"Secret1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_new_token', String(j.access)); } catch (e) {}",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_refresh_token', String(j.refresh)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{onco_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (patient)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('role is patient', ()=>pm.expect(pm.response.json().role).to.eql('patient'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (no token) -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.expect([401]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 - Admin: users (F8)",
+      "item": [
+        {
+          "name": "List users (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create doctor account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"dr_{{$timestamp}}\",\n  \"password\": \"Doctor12345\",\n  \"role\": \"clinical\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Doctor\",\n  \"specialty\": \"Radiology\",\n  \"license_no\": \"LIC-{{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_user_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{onco_user_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{onco_user_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{onco_user_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{onco_user_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users as patient -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users as doctor -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 - Patients and doctors (F2)",
+      "item": [
+        {
+          "name": "List patients (doctor sees all)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List patients (patient sees own only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('only 1 row', ()=>pm.expect(pm.response.json().length).to.eql(1));try { const j = pm.response.json(); pm.collectionVariables.set('onco_patient_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get my patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/{{onco_patient_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{onco_patient_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/patients/{{onco_patient_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "{{onco_patient_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Cairo, Egypt\",\n  \"emergency_contact\": \"01099999999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/doctors/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get doctor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/doctors/{{onco_doctor_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                "{{onco_doctor_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List patients (no token) -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.expect([401]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 - Catalog: ICD-10 and services (F6, F17)",
+      "item": [
+        {
+          "name": "List ICD-10 codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/icd10/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "icd10",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ICD-10 code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/icd10/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "icd10",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"C50.9\",\n  \"description\": \"Malignant neoplasm of breast, unspecified\",\n  \"category\": \"Neoplasms\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201/400', function () { pm.expect([201, 400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_service_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MRI scan\",\n  \"price\": \"2500.00\",\n  \"icd10_code\": \"C25.9\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ICD-10 as patient -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/icd10/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "icd10",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 - Appointments (F3)",
+      "item": [
+        {
+          "name": "Book appointment (patient)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"{{onco_slot_start}}\",\n  \"end_time\": \"{{onco_slot_end}}\",\n  \"reason\": \"Follow-up\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); let off = 1 + Math.floor(Math.random()*90);",
+                  "d.setUTCDate(d.getUTCDate()+off);",
+                  "while ([0,6].includes(new Date(d.toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())) d.setUTCDate(d.getUTCDate()+1);",
+                  "const day = d.toISOString().slice(0,10);",
+                  "const h = 10 + Math.floor(Math.random()*6), m = Math.random() < 0.5 ? '00' : '30';",
+                  "const start = `${day}T${h}:${m}:00+02:00`;",
+                  "const endM = m === '00' ? '30' : '00', endH = m === '00' ? h : h+1;",
+                  "pm.collectionVariables.set('onco_slot_start', start);",
+                  "pm.collectionVariables.set('onco_slot_end', `${day}T${String(endH).padStart(2,'0')}:${endM}:00+02:00`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_appointment_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Double booking same slot -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"{{onco_slot_start}}\",\n  \"end_time\": \"{{onco_slot_end}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Booking in the past -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"2020-01-06T10:00:00+02:00\",\n  \"end_time\": \"2020-01-06T10:30:00+02:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Outside availability (03:00) -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"2030-01-07T03:00:00+02:00\",\n  \"end_time\": \"2030-01-07T03:30:00+02:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List appointments (patient)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List appointments (doctor)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get appointment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/{{onco_appointment_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{onco_appointment_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update reason",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/{{onco_appointment_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{onco_appointment_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Follow-up (changed)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other patient cannot see it -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/{{onco_appointment_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{onco_appointment_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_new_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.expect([404]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel appointment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/{{onco_appointment_id}}/cancel/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{onco_appointment_id}}",
+                "cancel",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('cancelled', ()=>pm.expect(pm.response.json().status).to.eql('cancelled'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff books for a patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"{{onco_slot_start}}\",\n  \"end_time\": \"{{onco_slot_end}}\",\n  \"reason\": \"Booked by staff\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); let off = 1 + Math.floor(Math.random()*90);",
+                  "d.setUTCDate(d.getUTCDate()+off);",
+                  "while ([0,6].includes(new Date(d.toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())) d.setUTCDate(d.getUTCDate()+1);",
+                  "const day = d.toISOString().slice(0,10);",
+                  "const h = 10 + Math.floor(Math.random()*6), m = Math.random() < 0.5 ? '00' : '30';",
+                  "const start = `${day}T${h}:${m}:00+02:00`;",
+                  "const endM = m === '00' ? '30' : '00', endH = m === '00' ? h : h+1;",
+                  "pm.collectionVariables.set('onco_slot_start', start);",
+                  "pm.collectionVariables.set('onco_slot_end', `${day}T${String(endH).padStart(2,'0')}:${endM}:00+02:00`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 - Medical records and prescriptions (F4, F5)",
+      "item": [
+        {
+          "name": "Create record with ICD-10 + prescription (doctor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/records/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"notes\": \"Consultation. CT requested.\",\n  \"diagnoses_in\": [\n    {\n      \"icd10_code\": \"C25.9\",\n      \"is_primary\": true\n    }\n  ],\n  \"prescriptions_in\": [\n    {\n      \"medication\": \"Ondansetron\",\n      \"dosage\": \"8 mg\",\n      \"frequency\": \"twice daily\",\n      \"duration\": \"7 days\",\n      \"instructions\": \"After meals\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_record_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Two primary diagnoses -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/records/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"diagnoses_in\": [\n    {\n      \"icd10_code\": \"C25.9\",\n      \"is_primary\": true\n    },\n    {\n      \"icd10_code\": \"Z51.11\",\n      \"is_primary\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create record as admin (no doctor profile) -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/records/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"notes\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create record as patient -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/records/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"notes\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List records (patient: own only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/records/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List records filtered by patient (staff)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/records/?patient={{onco_patient_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "patient",
+                  "value": "{{onco_patient_id}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get record",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/records/{{onco_record_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                "{{onco_record_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other patient cannot read record -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/records/{{onco_record_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                "{{onco_record_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_new_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.expect([404]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate invoice from record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/records/{{onco_record_id}}/invoice/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "records",
+                "{{onco_record_id}}",
+                "invoice",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items_in\": [\n    {\n      \"service\": \"{{onco_service_id}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_invoice_id', String(j.id)); } catch (e) {}",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_invoice_total', String(j.total_amount)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 - Treatment plans (F5)",
+      "item": [
+        {
+          "name": "Create plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"record\": \"{{onco_record_id}}\",\n  \"type\": \"chemotherapy\",\n  \"description\": \"FOLFIRINOX x6\",\n  \"start_date\": \"2026-12-01\",\n  \"end_date\": \"2027-03-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_plan_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "End before start -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"type\": \"surgery\",\n  \"start_date\": \"2026-12-01\",\n  \"end_date\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List plans (patient)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get plan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/{{onco_plan_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                "{{onco_plan_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete plan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/{{onco_plan_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                "{{onco_plan_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patient cannot create plan -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/treatment-plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "treatment-plans",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"type\": \"other\",\n  \"start_date\": \"2026-12-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8 - Billing and payments (F6)",
+      "item": [
+        {
+          "name": "List invoices (patient)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/{{onco_invoice_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{onco_invoice_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create invoice directly (doctor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"items_in\": [\n    {\n      \"service\": \"{{onco_service_id}}\",\n      \"quantity\": 1,\n      \"icd10_code\": \"C25.9\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patient cannot create invoice -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"items_in\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Overpay -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/{{onco_invoice_id}}/pay/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{onco_invoice_id}}",
+                "pay",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"99999999.00\",\n  \"method\": \"card\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Partial payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/{{onco_invoice_id}}/pay/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{onco_invoice_id}}",
+                "pay",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"1.00\",\n  \"method\": \"card\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('still pending', ()=>pm.expect(pm.response.json().status).to.eql('pending'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay the rest -> paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/{{onco_invoice_id}}/pay/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{onco_invoice_id}}",
+                "pay",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"{{onco_invoice_total}}\",\n  \"method\": \"card\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200/400', function () { pm.expect([200, 400]).to.include(pm.response.code); });",
+                  "pm.test('amount handled', ()=>pm.expect([200,400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other patient cannot see invoice -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/{{onco_invoice_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                "{{onco_invoice_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_new_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.expect([404]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9 - Orders and results (HL7 ORM/ORU)",
+      "item": [
+        {
+          "name": "Create order (doctor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"order_type\": \"imaging\",\n  \"description\": \"CT abdomen\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_order_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List orders (patient)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/orders/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{{onco_order_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{onco_order_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patient cannot add result -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{{onco_order_id}}/result/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{onco_order_id}}",
+                "result",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result_text\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty result -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{{onco_order_id}}/result/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{onco_order_id}}",
+                "result",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result_text\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add result (doctor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{{onco_order_id}}/result/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{onco_order_id}}",
+                "result",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result_text\": \"2 cm hypodense lesion in pancreatic head\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('completed', ()=>pm.expect(pm.response.json().status).to.eql('completed'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 - HL7 log (F10)",
+      "item": [
+        {
+          "name": "List HL7 messages (staff)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/hl7/messages/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "hl7",
+                "messages",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('has ADT/SIU/ORM/ORU', ()=>pm.expect(pm.response.json().length).to.be.above(0));try { const j = pm.response.json(); pm.collectionVariables.set('onco_hl7_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get HL7 message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/hl7/messages/{{onco_hl7_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "hl7",
+                "messages",
+                "{{onco_hl7_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend (409 if HL7_ENABLED=0, 200 if on)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/hl7/messages/{{onco_hl7_id}}/resend/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "hl7",
+                "messages",
+                "{{onco_hl7_id}}",
+                "resend",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200/409', function () { pm.expect([200, 409]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HL7 log as patient -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/hl7/messages/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "hl7",
+                "messages",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 - Reports (F7)",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/summary/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "summary",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export invoices CSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/export/?type=invoices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "export",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "invoices"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export appointments CSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/export/?type=appointments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "export",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "appointments"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export patients CSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/export/?type=patients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "export",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "patients"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export unknown type -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/export/?type=foo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "export",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "foo"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Summary as patient -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/summary/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "summary",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12 - Admin: settings and audit (F8)",
+      "item": [
+        {
+          "name": "Create setting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/settings/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"clinic_name_{{$timestamp}}\",\n  \"value\": \"OncoSphere Cairo\",\n  \"description\": \"Display name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_setting_id', String(j.id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update setting",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/settings/{{onco_setting_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "{{onco_setting_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"OncoSphere Giza\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete setting",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/{{onco_setting_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "{{onco_setting_id}}",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () { pm.expect([204]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/audit/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit log as doctor -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/audit/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "audit",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Settings as patient -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_patient_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13 - API docs",
+      "item": [
+        {
+          "name": "OpenAPI schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/schema/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schema",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/docs/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "docs",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "admin_user",
+      "value": "admin"
+    },
+    {
+      "key": "admin_pass",
+      "value": "Admin12345"
+    },
+    {
+      "key": "doctor_user",
+      "value": "dr.salma"
+    },
+    {
+      "key": "doctor_pass",
+      "value": "Doctor12345"
+    },
+    {
+      "key": "patient_user",
+      "value": "patient1"
+    },
+    {
+      "key": "patient_pass",
+      "value": "Patient12345"
+    }
+  ]
+}
