@@ -16,14 +16,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
-    # --- Feature Apps (Merged via team feature branches) ---
-    # "accounts",                             # Member 1 (Auth & RBAC)
-    # "patients",                             # Member 2 (Patients Management)
-    # "appointments",                         # Member 3 (Appointments Scheduling)
-    # "records",                              # Member 4 (Medical Records & ICD-10)
-    # "billing",                              # Member 5 (Billing & Invoices)
-    # "reports",                              # Member 6 (Reports & Analytics)
-    # "integration.apps.IntegrationConfig",   # Member 6 (HL7 & Audit Logs)
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -33,7 +26,6 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    # "integration.middleware.AuditMiddleware", # Member 6 (Audit logging)
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -73,8 +65,7 @@ else:
         }
     }
 
-# Member 1 will uncomment this upon adding accounts.User:
-# AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [{"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"}]
 STATIC_URL = "static/"
