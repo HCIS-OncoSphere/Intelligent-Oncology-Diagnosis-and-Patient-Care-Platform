@@ -13,20 +13,6 @@ oncosphere/
 
 ---
 
-## 👥 Team Contribution & Feature Branching Guide
-
-To ensure clean collaboration across all 6 team members, each member works on their dedicated feature branch and opens a Pull Request (or merges to `main`):
-
-| Member | Feature | Branch Name | Scope / Target Modules |
-|---|---|---|---|
-| **Member 1** | **Auth & RBAC** | `feature/auth-rbac` | `backend/accounts/` (Custom User, JWT Auth, Permissions) |
-| **Member 2** | **Patients Management** | `feature/patient-management` | `backend/patients/` (MRN, Demographics, Patient Profiles) |
-| **Member 3** | **Appointments** | `feature/appointments-scheduling` | `backend/appointments/` (Doctor Availability, Booking, Clash Prevention) |
-| **Member 4** | **Medical Records & ICD-10** | `feature/medical-records` | `backend/records/` (Encounters, ICD-10 Diagnosis, Prescriptions, Plans) |
-| **Member 5** | **Billing & Invoices** | `feature/billing-system` | `backend/billing/` (Service Catalog, Invoices, Payment tracking) |
-| **Member 6** | **Analytics & HL7 Service** | `feature/reports-hl7` | `backend/reports/`, `backend/integration/`, `hl7_service/` |
-
----
 
 ## 🚀 Quick Start Guide
 
