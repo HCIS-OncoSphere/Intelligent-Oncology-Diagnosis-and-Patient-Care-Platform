@@ -41,6 +41,39 @@ class AccountsTestBase(TestCase):
             role=User.Role.PATIENT,
         )
 
+        self.patient_user_2 = User.objects.create_user(
+            username="patient_test_2",
+            password="PatientPassword123!",
+            email="patient2@oncosphere.local",
+            first_name="Sara",
+            last_name="Ibrahim",
+            role=User.Role.PATIENT,
+        )
+
+        # Create Patient profiles if patients app is available
+        try:
+            from patients.models import Patient
+            self.patient_profile_1 = Patient.objects.create(
+                user=self.patient_user,
+                date_of_birth="1992-04-10",
+                gender=Patient.Gender.MALE,
+                phone="01111222333",
+                emergency_contact="Father: 01000000000",
+                cancer_type="Breast",
+                cancer_stage="Stage II",
+            )
+            self.patient_profile_2 = Patient.objects.create(
+                user=self.patient_user_2,
+                date_of_birth="1988-11-20",
+                gender=Patient.Gender.FEMALE,
+                phone="01222333444",
+                emergency_contact="Spouse: 01111111111",
+                cancer_type="Lung",
+                cancer_stage="Stage I",
+            )
+        except (ImportError, Exception):
+            pass
+
     def login_user(self, username="admin_test", password="AdminPassword123!"):
         """Helper to obtain JWT and configure self.client Authorization header."""
         res = self.client.post("/api/auth/login/", {"username": username, "password": password}, format="json")
