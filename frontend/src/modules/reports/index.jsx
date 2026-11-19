@@ -30,6 +30,14 @@ function Chart({ title, data, note = "No data yet." }) {
   );
 }
 
+/** Grey placeholders in the shape of the page, shown while the first numbers load. */
+const Skeleton = () => (
+  <div aria-busy="true" aria-label="Loading reports">
+    <div className="tiles">{[0, 1, 2, 3].map((i) => <div key={i} className="tile skeleton" style={{ height: 78 }} />)}</div>
+    <div className="charts">{[0, 1, 2, 3].map((i) => <div key={i} className="card skeleton" style={{ height: 150 }} />)}</div>
+  </div>
+);
+
 function Reports() {
   const [rawDays, setDays] = useQueryState("days", "30"); // /reports?days=90
   const days = PERIODS.includes(Number(rawDays)) ? Number(rawDays) : 30;
@@ -52,7 +60,7 @@ function Reports() {
     setMsg({ ok: true, text: `Downloaded ${type}.csv` });
   };
 
-  if (!s) return msg.text ? <Msg m={msg} /> : <p className="hint">Loading…</p>;
+  if (!s) return msg.text ? <Msg m={msg} /> : <Skeleton />;
   const billing = s.modules?.billing, records = s.modules?.records;
   return (
     <>

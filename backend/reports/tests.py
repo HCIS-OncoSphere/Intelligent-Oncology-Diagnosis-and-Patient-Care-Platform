@@ -2,6 +2,8 @@
 from datetime import timedelta
 
 from django.apps import apps
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from accounts.testing import AccountsTestBase
@@ -36,6 +38,15 @@ class ReportTests(AccountsTestBase):
         self.login_user("dr_salma_test", "DoctorPassword123!")
         self.assertEqual(self.client.get("/api/reports/summary/?days=7").data["period_days"], 7)
         self.assertEqual(self.client.get("/api/reports/summary/?days=abc").status_code, 400)
+
+    def test_summary_uses_few_queries(self):
+        """Each query is a round trip to the database, so the dashboard keeps them to a handful."""
+        self.login_user("admin_test", "AdminPassword123!")
+        self.client.get("/api/reports/summary/")
+        with CaptureQueriesContext(connection) as q:
+            self.assertEqual(self.client.get("/api/reports/summary/").status_code, 200)
+        extra = 3 * sum(apps.is_installed(a) for a in ("billing", "records"))  # the optional parts add a few
+        self.assertLessEqual(len(q), 7 + extra, [x["sql"][:80] for x in q.captured_queries])
 
     def test_period_applies_to_every_appointment_number(self):
         old = timezone.now() - timedelta(days=60)

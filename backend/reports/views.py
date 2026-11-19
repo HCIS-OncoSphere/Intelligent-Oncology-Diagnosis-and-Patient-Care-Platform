@@ -54,17 +54,19 @@ class SummaryView(APIView):
         per_doctor = (appts.exclude(status=Appointment.Status.CANCELLED)
                       .values("doctor_id", "doctor__user__first_name", "doctor__user__last_name", "doctor__user__username")
                       .annotate(n=Count("id")).order_by("-n"))
-        finished = appts.filter(status__in=[Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW])
-        no_show_rate = round(finished.filter(status=Appointment.Status.NO_SHOW).count() / finished.count(), 3) \
-            if finished.exists() else 0
+        # totals and the no-show rate come from the group-by results below, so they cost no extra queries
+        by_status = _counts(appts, "status")
+        by_gender = _counts(Patient.objects.all(), "gender")
+        done = by_status.get(Appointment.Status.COMPLETED, 0) + by_status.get(Appointment.Status.NO_SHOW, 0)
+        no_show_rate = round(by_status.get(Appointment.Status.NO_SHOW, 0) / done, 3) if done else 0
 
         data = {
             "period_days": days,
-            "patients_total": Patient.objects.count(),
-            "patients_by_gender": _counts(Patient.objects.all(), "gender"),
+            "patients_total": sum(by_gender.values()),
+            "patients_by_gender": by_gender,
             "patients_by_cancer_type": _counts(Patient.objects.exclude(cancer_type=""), "cancer_type"),
-            "appointments_total": appts.count(),
-            "appointments_by_status": _counts(appts, "status"),
+            "appointments_total": sum(by_status.values()),
+            "appointments_by_status": by_status,
             "appointments_per_day": [{"date": r["d"].isoformat(), "count": r["n"]} for r in per_day],
             "appointments_by_doctor": [
                 {"doctor": r["doctor_id"],

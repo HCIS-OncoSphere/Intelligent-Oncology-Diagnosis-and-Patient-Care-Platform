@@ -14,6 +14,8 @@ patients see only their own            test_patient_cannot_see_others_appointmen
 """
 from datetime import time, timedelta
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from accounts.models import User
@@ -303,3 +305,37 @@ class AvailabilityTests(AppointmentBase):
         d = self.client.get("/api/doctors/").data[0]
         self.assertEqual(d["name"], "Salma Oncologist")
         self.assertEqual(len(d["availability"]), 5)
+
+
+class QueryCountTests(AppointmentBase):
+    """No N+1: the number of queries must not grow with the number of rows."""
+
+    URLS = ["/api/appointments/", "/api/appointments/reminders/", "/api/doctors/", "/api/availability/",
+            "/api/reports/export/?type=appointments", "/api/reports/summary/"]
+
+    def add_appointments(self, n, offset):
+        tomorrow = timezone.localtime() + timedelta(days=1)
+        for i in range(n):
+            doctor = Doctor.objects.create(
+                user=User.objects.create_user(username=f"dr_q{offset + i}", password="x", email=f"q{offset + i}@onco.test",
+                                             role=User.Role.CLINICAL),
+                specialty="Oncology", license_no=f"Q{offset + i}")
+            DoctorAvailability.objects.create(doctor=doctor, day_of_week=0, start_time=time(9), end_time=time(17))
+            start = tomorrow.replace(hour=9, minute=0) + timedelta(minutes=30 * (offset + i))
+            Appointment.objects.create(patient=self.patient_profile_1 if i % 2 else self.patient_profile_2,
+                                       doctor=doctor, booked_by=self.admin_user,
+                                       start_time=start, end_time=start + timedelta(minutes=30))
+
+    def count(self, url):
+        self.client.get(url)  # warm up caches such as permissions / content types
+        with CaptureQueriesContext(connection) as q:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        return len(q)
+
+    def test_queries_do_not_grow_with_rows(self):
+        self.as_admin()
+        self.add_appointments(2, 0)
+        before = {u: self.count(u) for u in self.URLS}
+        self.add_appointments(10, 2)
+        after = {u: self.count(u) for u in self.URLS}
+        self.assertEqual(before, after, "the query count changed with the number of rows (N+1)")

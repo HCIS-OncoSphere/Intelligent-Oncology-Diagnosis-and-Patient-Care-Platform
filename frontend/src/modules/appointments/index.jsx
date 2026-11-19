@@ -9,6 +9,9 @@ import { Badge, Msg, Table, errorText, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
 
 const STATUSES = ["scheduled", "completed", "cancelled", "no_show"];
+// reasons offered in the booking form; "Other" lets the user type their own
+const REASONS = ["Consultation", "Follow-up visit", "Chemotherapy session", "Radiotherapy session", "Imaging / scan",
+  "Lab results review", "Other"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
 const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -106,7 +109,8 @@ function Appointments({ me }) {
   const query = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString();
   const [rows, load] = useList(`/appointments/${query ? "?" + query : ""}`);
   const [doctors, setDoctors] = useState([]), [patients, setPatients] = useState([]);
-  const [doctor, setDoctor] = useState(""), [patient, setPatient] = useState(""), [reason, setReason] = useState("Consultation");
+  const [doctor, setDoctor] = useState(""), [patient, setPatient] = useState(""), [reasonChoice, setReasonChoice] = useState(REASONS[0]), [reasonOther, setReasonOther] = useState("");
+  const reason = reasonChoice === "Other" ? reasonOther.trim() || "Other" : reasonChoice;
   const [moving, setMoving] = useState(null), [msg, setMsg] = useState({});
   const [reminders, loadReminders] = useList(staff ? "/appointments/reminders/" : "/appointments/?status=__none__");
 
@@ -164,7 +168,14 @@ function Appointments({ me }) {
                     </select>
                   </label>
                 )}
-                <label>Reason<input value={reason} onChange={(e) => setReason(e.target.value)} size="28" /></label>
+                <label>Reason
+                  <select value={reasonChoice} onChange={(e) => setReasonChoice(e.target.value)}>
+                    {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </label>
+                {reasonChoice === "Other" && (
+                  <label>Describe the reason<input value={reasonOther} maxLength={200} onChange={(e) => setReasonOther(e.target.value)} placeholder="e.g. new symptom" size="26" /></label>
+                )}
               </div>
             )}
             {doctors.length ? (
