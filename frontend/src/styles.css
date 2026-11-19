@@ -166,14 +166,12 @@ td.empty:hover { background: none; }
 .login-card { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 30px 28px; box-shadow: var(--shadow); }
 .login-card .brand { justify-content: center; margin-bottom: 4px; font-size: 1.4rem; }
 .login-card .tagline { text-align: center; color: var(--muted); margin-bottom: 22px; font-size: .9rem; }
+.login-card h2 { font-size: 1.1rem; margin-bottom: 16px; }
 .login-card button.primary { width: 100%; min-height: 42px; margin-top: 4px; }
-.login-switch { text-align: center; margin-top: 14px; font-size: .9rem; color: var(--muted); }
-.login-switch button { background: none; border: 0; color: var(--primary); padding: 2px 4px; min-height: 0; text-decoration: underline; }
 
 @media (max-width: 640px) {
   .page { padding: 16px 14px 48px; }
-  .grid-2 { grid-template-columns: 1fr; }
-  .charts { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }  .charts { grid-template-columns: 1fr; }
   .user-chip .who { display: none; }
   th, td { padding: 9px 10px; }
 }
