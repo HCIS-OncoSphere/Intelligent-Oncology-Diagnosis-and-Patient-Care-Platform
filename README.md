@@ -167,6 +167,20 @@ When the backend server is running, you can explore and test the endpoints direc
 - **`PATCH /api/patients/{id}/`**: Update contact/demographics (protected from unauthorized tampering)
 - **`GET /api/users/`**: User management (Admin only)
 
+#### Appointments (F3) and reports (F7)
+
+Demo data for this slice: `python manage.py seed_appointments` (admin / dr.salma with Mon-Fri 09:00-17:00 / patient1).
+
+- **`GET /api/doctors/`**, **`GET /api/doctors/{id}/slots/?date=YYYY-MM-DD`**: doctors with their weekly hours, and the free 30-minute slots of one day
+- **`GET, POST /api/availability/`** (`?doctor=id`): weekly working windows (read: everyone, write: staff)
+- **`GET, POST /api/appointments/`**: list (patients see only their own; filters `?status=`, `?date=`, `?doctor=`, `?patient=`, `?upcoming=1`) and book. Booking is refused when it is in the past, outside the doctor's hours or overlaps another booking
+- **`POST /api/appointments/{id}/cancel/`**, **`POST /api/appointments/{id}/reschedule/`**: cancel (frees the slot) or move a booking
+- **`GET /api/appointments/reminders/`**: tomorrow's scheduled appointments with phone numbers (staff)
+- **`GET /api/reports/summary/?days=30`**: dashboard numbers (staff). Billing and diagnosis figures appear once those apps are installed
+- **`GET /api/reports/export/?type=appointments|patients|invoices`**: CSV download (staff)
+
+Tests: `python manage.py test appointments reports`. Postman: `docs/postman/2_Appointments_Reports.postman_collection.json`.
+
 ---
 
 ## ⚙️ Environment Configuration
