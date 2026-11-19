@@ -1,5 +1,7 @@
 // App shell. Nobody edits this file to add a page: drop a folder in src/modules/<name>/index.jsx and it is picked up.
+// Each module gets its own URL, /<id>, so refresh, Back/Forward and shared links open the same page.
 import { useEffect, useState } from "react";
+import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, logout } from "./api.js";
 import { Logo } from "./shared/ui.jsx";
 import Login from "./shell/Login.jsx";
@@ -10,13 +12,30 @@ const modules = Object.values(found).map((m) => m.default).sort((a, b) => a.orde
 
 const ROLE = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient" };
 
+function Page({ module, me }) {
+  useEffect(() => { document.title = `${module.label} · OncoSphere`; }, [module]);
+  return (
+    <>
+      <div className="page-title"><h1>{module.label}</h1></div>
+      <module.Component me={me} />
+    </>
+  );
+}
+
 export default function App() {
-  const [me, setMe] = useState(null), [tab, setTab] = useState(null);
-  useEffect(() => { if (localStorage.getItem("access")) api("/auth/me/").then(setMe).catch(() => logout()); }, []);
+  const [me, setMe] = useState(null);
+  const [checking, setChecking] = useState(() => !!localStorage.getItem("access"));
+  useEffect(() => {
+    if (!checking) return;
+    api("/auth/me/").then(setMe).catch(() => logout()).finally(() => setChecking(false));
+  }, []);
+
+  if (checking) return <p className="hint" style={{ padding: 24 }}>Loading…</p>;
+  // signed out: show the sign-in form at whatever URL was opened, so a shared link lands on its page after sign-in
   if (!me) return <Login onDone={setMe} />;
 
   const visible = modules.filter((m) => m.roles.includes(me.role));
-  const current = visible.find((m) => m.id === tab) || visible[0];
+  const home = visible[0] ? `/${visible[0].id}` : null;
   const name = [me.first_name, me.last_name].filter(Boolean).join(" ") || me.username;
   return (
     <>
@@ -32,16 +51,17 @@ export default function App() {
         </div>
         <nav className="tabs" aria-label="Main">
           {visible.map((m) => (
-            <button key={m.id} className={`tab${current?.id === m.id ? " active" : ""}`} onClick={() => setTab(m.id)}>{m.label}</button>
+            <NavLink key={m.id} to={`/${m.id}`} className={({ isActive }) => `tab${isActive ? " active" : ""}`}>{m.label}</NavLink>
           ))}
         </nav>
       </header>
       <main className="page">
-        {current ? (
-          <>
-            <div className="page-title"><h1>{current.label}</h1></div>
-            <current.Component me={me} />
-          </>
+        {home ? (
+          <Routes>
+            {visible.map((m) => <Route key={m.id} path={`/${m.id}/*`} element={<Page module={m} me={me} />} />)}
+            {/* the home page and any unknown or not-allowed address go to the first page of this role */}
+            <Route path="*" element={<Navigate to={home} replace />} />
+          </Routes>
         ) : <p>No pages available for your role.</p>}
       </main>
     </>

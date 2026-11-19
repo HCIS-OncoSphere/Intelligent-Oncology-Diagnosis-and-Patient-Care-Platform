@@ -25,18 +25,33 @@ class ReportTests(AccountsTestBase):
         d = r.data
         self.assertEqual(d["patients_total"], 2)
         self.assertEqual(d["patients_by_gender"], {"F": 1, "M": 1})
-        self.assertEqual(d["appointments_total"], 4)
-        self.assertEqual(d["appointments_by_status"],
-                         {"cancelled": 1, "completed": 1, "no_show": 1, "scheduled": 1})
+        self.assertEqual(d["appointments_total"], 3)  # the future one is in upcoming, not in the period
+        self.assertEqual(d["appointments_by_status"], {"cancelled": 1, "completed": 1, "no_show": 1})
         self.assertEqual(d["upcoming_appointments"], 1)
         self.assertEqual(d["no_show_rate"], 0.5)
-        self.assertEqual(d["appointments_by_doctor"][0]["count"], 3)  # cancelled ones are not counted
-        self.assertEqual(sum(x["count"] for x in d["appointments_per_day"]), 4)
+        self.assertEqual(d["appointments_by_doctor"][0]["count"], 2)  # cancelled ones are not counted
+        self.assertEqual(sum(x["count"] for x in d["appointments_per_day"]), 3)
 
     def test_summary_period_parameter(self):
         self.login_user("dr_salma_test", "DoctorPassword123!")
         self.assertEqual(self.client.get("/api/reports/summary/?days=7").data["period_days"], 7)
         self.assertEqual(self.client.get("/api/reports/summary/?days=abc").status_code, 400)
+
+    def test_period_applies_to_every_appointment_number(self):
+        old = timezone.now() - timedelta(days=60)
+        Appointment.objects.create(patient=self.patient_profile_1, doctor=self.doctor, booked_by=self.clinical_user,
+                                   start_time=old, end_time=old + timedelta(minutes=30), status="no_show")
+        self.login_user("admin_test", "AdminPassword123!")
+        d30 = self.client.get("/api/reports/summary/?days=30").data
+        d90 = self.client.get("/api/reports/summary/?days=90").data
+        self.assertEqual(d30["appointments_total"], 3)
+        self.assertEqual(d90["appointments_total"], 4)
+        self.assertEqual(d90["upcoming_appointments"], 1)
+        self.assertEqual(d30["appointments_by_status"]["no_show"], 1)
+        self.assertEqual(d90["appointments_by_status"]["no_show"], 2)
+        self.assertEqual(d30["no_show_rate"], 0.5)
+        self.assertEqual(d90["no_show_rate"], round(2 / 3, 3))
+        self.assertEqual(d90["appointments_by_doctor"][0]["count"], 3)
 
     def test_patient_and_anonymous_blocked(self):
         self.assertEqual(self.client.get("/api/reports/summary/").status_code, 401)

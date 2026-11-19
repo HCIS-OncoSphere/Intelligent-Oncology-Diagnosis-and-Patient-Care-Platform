@@ -1,10 +1,14 @@
 // appointments/ (doctors, availability, appointments). Feature F3.
-// Patients book their own visits from the doctor's free slots; staff book for any patient, filter the list,
-// mark visits completed / no-show, reschedule, cancel, manage weekly availability and see tomorrow's reminder list.
+// Patients book their own visits from the doctor's free slots; admins book for any patient; staff filter the list,
+// mark visits completed / no-show, reschedule, cancel and see tomorrow's reminder list.
+// Weekly availability: admins set any doctor's hours, each doctor sets only their own.
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api.js";
 import { Badge, Msg, Table, errorText, useList } from "../../shared/ui.jsx";
+import { useQueryState } from "../../shared/url.js";
 
+const STATUSES = ["scheduled", "completed", "cancelled", "no_show"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
 const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -12,13 +16,23 @@ const day = (iso) => new Date(iso).toLocaleDateString([], { weekday: "short", da
 const when = (a) => `${day(a.start_time)}, ${hhmm(a.start_time)}–${hhmm(a.end_time)}`;
 
 /** Pick a doctor + day and click one of the free slots returned by GET /doctors/{id}/slots/. */
-function SlotPicker({ doctors, doctor, setDoctor, onPick, refreshKey, label, lockDoctor }) {
+function SlotPicker({ doctors, doctor, setDoctor, onPick, label, lockDoctor }) {
   const [date, setDate] = useState(today()), [slots, setSlots] = useState(null), [err, setErr] = useState("");
+  const [reload, setReload] = useState(0), [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!doctor || !date) return;
     setErr("");
     api(`/doctors/${doctor}/slots/?date=${date}`).then((r) => setSlots(r.slots)).catch((e) => { setSlots([]); setErr(errorText(e)); });
-  }, [doctor, date, refreshKey]);
+  }, [doctor, date, reload]);
+  // slots whose time has passed disappear while the page stays open
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
+  const free = slots && slots.filter((s) => new Date(s.start_time).getTime() > now);
+
+  // the clicked slot disappears at once (no waiting for the server); the list is then re-read to stay exact
+  const choose = async (slot) => {
+    setSlots((cur) => cur.filter((x) => x.start_time !== slot.start_time));
+    try { await onPick(slot); } finally { setReload((n) => n + 1); }
+  };
   const dr = doctors.find((d) => String(d.id) === String(doctor));
   return (
     <>
@@ -34,28 +48,35 @@ function SlotPicker({ doctors, doctor, setDoctor, onPick, refreshKey, label, loc
         <p className="hint">Works {dr.availability.map((w) => `${DAYS[w.day_of_week].slice(0, 3)} ${w.start_time.slice(0, 5)}–${w.end_time.slice(0, 5)}`).join(" · ")}</p>
       )}
       <div className="slots">
-        {slots === null ? <span className="empty-note">Choose a doctor and a day.</span>
-          : slots.length === 0 ? <span className="empty-note">{err || "No free slots on this day. Try another day."}</span>
-          : slots.map((s) => <button key={s.start_time} className="slot" onClick={() => onPick(s)} title={label}>{hhmm(s.start_time)}</button>)}
+        {free === null ? <span className="empty-note">Choose a doctor and a day.</span>
+          : free.length === 0 ? <span className="empty-note">{err || "No free slots on this day. Try another day."}</span>
+          : free.map((s) => <button key={s.start_time} className="slot" onClick={() => choose(s)} title={label}>{hhmm(s.start_time)}</button>)}
       </div>
     </>
   );
 }
 
-function Availability({ doctors, reloadDoctors }) {
-  const [doctor, setDoctor] = useState(doctors[0]?.id || "");
+function Availability({ me, doctors, reloadDoctors }) {
+  // admins manage every doctor's hours; a doctor manages only their own
+  const admin = me.role === "admin";
+  const own = doctors.find((d) => d.is_me);
+  const [picked, setDoctor] = useState(doctors[0]?.id || "");
+  const doctor = admin ? picked || doctors[0]?.id || "" : own?.id || "";
   const [rows, load] = useList(doctor ? `/availability/?doctor=${doctor}` : "/availability/?doctor=0");
   const [f, setF] = useState({ day_of_week: "0", start_time: "09:00", end_time: "17:00" }), [msg, setMsg] = useState({});
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const done = (text) => { setMsg({ ok: true, text }); load(); reloadDoctors(); };
   const add = () => api("/availability/", { method: "POST", body: { ...f, doctor } }).then(() => done("Window added.")).catch((e) => setMsg({ text: errorText(e) }));
   const del = (w) => api(`/availability/${w.id}/`, { method: "DELETE" }).then(() => done("Window removed.")).catch((e) => setMsg({ text: errorText(e) }));
+  if (!admin && !own) {
+    return <p className="hint">{doctors.length ? "Your account has no doctor profile, so there are no working hours to set. Ask an admin." : "Loading…"}</p>;
+  }
   return (
     <>
       <fieldset>
-        <legend>Add a working window</legend>
+        <legend>{admin ? "Add a working window" : "My working hours"}</legend>
         <div className="form-row">
-          <label>Doctor<select value={doctor} onChange={(e) => setDoctor(e.target.value)}>{doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
+          <label>Doctor<select value={doctor} disabled={!admin} onChange={(e) => setDoctor(e.target.value)}>{doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
           <label>Day<select value={f.day_of_week} onChange={set("day_of_week")}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></label>
           <label>From<input type="time" value={f.start_time} onChange={set("start_time")} /></label>
           <label>To<input type="time" value={f.end_time} onChange={set("end_time")} /></label>
@@ -72,17 +93,26 @@ function Availability({ doctors, reloadDoctors }) {
 
 function Appointments({ me }) {
   const staff = me.role !== "patient";
-  const [filter, setFilter] = useState({ status: "", date: "" });
+  const canBook = me.role !== "clinical"; // patients book for themselves, admins for a patient, doctors do not book
+  // view and filters live in the URL: /appointments?view=reminders, /appointments?status=scheduled&date=2026-11-20
+  const [, setSearch] = useSearchParams();
+  const [rawStatus, setStatus] = useQueryState("status", "", { replace: true });
+  const [rawDate, setDate] = useQueryState("date", "", { replace: true });
+  const [rawView, setView] = useQueryState("view", "list");
+  // a hand-edited URL with a bad value is ignored instead of sent to the API
+  const status = STATUSES.includes(rawStatus) ? rawStatus : "";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : "";
+  const filter = { status, date };
   const query = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString();
   const [rows, load] = useList(`/appointments/${query ? "?" + query : ""}`);
   const [doctors, setDoctors] = useState([]), [patients, setPatients] = useState([]);
   const [doctor, setDoctor] = useState(""), [patient, setPatient] = useState(""), [reason, setReason] = useState("Consultation");
-  const [moving, setMoving] = useState(null), [msg, setMsg] = useState({}), [tick, setTick] = useState(0), [view, setView] = useState("list");
+  const [moving, setMoving] = useState(null), [msg, setMsg] = useState({});
   const [reminders, loadReminders] = useList(staff ? "/appointments/reminders/" : "/appointments/?status=__none__");
 
   const loadDoctors = () => api("/doctors/").then((d) => { setDoctors(d); setDoctor((cur) => cur || (d[0] ? String(d[0].id) : "")); });
   useEffect(() => { loadDoctors().catch(() => {}); if (staff) api("/patients/").then(setPatients).catch(() => {}); }, []);
-  const refresh = (text) => { setMsg({ ok: true, text }); load(); setTick((t) => t + 1); if (staff) loadReminders(); };
+  const refresh = (text) => { setMsg({ ok: true, text }); load(); if (staff) loadReminders(); };
   const fail = (e) => setMsg({ text: errorText(e) });
 
   const pick = (slot) => {
@@ -98,6 +128,7 @@ function Appointments({ me }) {
   const cancel = (a) => { if (confirm(`Cancel the appointment on ${when(a)}?`)) act(a, "cancel/", undefined, "Appointment cancelled."); };
 
   const views = { list: "Appointments", availability: "Doctor hours", reminders: `Tomorrow (${reminders.length})` };
+  const view = staff && views[rawView] ? rawView : "list"; // patients, or an unknown ?view=, get the list
   return (
     <>
       {staff && (
@@ -108,7 +139,7 @@ function Appointments({ me }) {
         </div>
       )}
 
-      {view === "availability" && staff && <Availability doctors={doctors} reloadDoctors={loadDoctors} />}
+      {view === "availability" && staff && <Availability me={me} doctors={doctors} reloadDoctors={loadDoctors} />}
 
       {view === "reminders" && staff && (
         <>
@@ -121,7 +152,7 @@ function Appointments({ me }) {
 
       {view === "list" && (
         <>
-          <fieldset>
+          {(canBook || moving) ? <fieldset>
             <legend>{moving ? `Reschedule: ${when(moving)}` : "Book an appointment"}</legend>
             {!moving && (
               <div className="form-row">
@@ -138,20 +169,20 @@ function Appointments({ me }) {
             )}
             {doctors.length ? (
               <SlotPicker doctors={doctors} doctor={moving ? String(moving.doctor) : doctor} setDoctor={setDoctor} lockDoctor={!!moving}
-                onPick={pick} refreshKey={tick} label={moving ? "Move here" : "Book this slot (30 min)"} />
+                onPick={pick} label={moving ? "Move here" : "Book this slot (30 min)"} />
             ) : <p className="hint">No doctors yet. An admin creates a clinical user with a license number.</p>}
             {moving && <button onClick={() => setMoving(null)}>Stop rescheduling</button>}
             <Msg m={msg} />
-          </fieldset>
+          </fieldset> : <Msg m={msg} />}
 
           <div className="form-row">
             <label>Status
-              <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
-                <option value="">All</option>{["scheduled", "completed", "cancelled", "no_show"].map((s) => <option key={s} value={s}>{s.replace("_", "-")}</option>)}
+              <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="">All</option>{STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", "-")}</option>)}
               </select>
             </label>
-            <label>Day<input type="date" value={filter.date} onChange={(e) => setFilter({ ...filter, date: e.target.value })} /></label>
-            {(filter.status || filter.date) && <button className="ghost" onClick={() => setFilter({ status: "", date: "" })}>Clear filters</button>}
+            <label>Day<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            {(status || date) && <button className="ghost" onClick={() => setSearch({}, { replace: true })}>Clear filters</button>}
           </div>
           <Table head={["When", "Doctor", ...(staff ? ["Patient"] : []), "Reason", "Status", ""]} empty="No appointments found."
             rows={rows.map((a) => {

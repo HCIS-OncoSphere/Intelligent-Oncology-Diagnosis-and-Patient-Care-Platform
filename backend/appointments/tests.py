@@ -5,6 +5,10 @@ end after start                        test_end_before_start_rejected
 not in the past                        test_past_booking_rejected
 inside doctor availability             test_outside_availability_rejected
 no double booking                      test_book_and_double_booking_rejected
+patient not in two places at once      test_patient_cannot_be_in_two_places_at_once
+doctors set only their own hours       test_doctor_changes_only_own_hours
+status changes follow the flow         test_future_visit_cannot_be_marked_completed,
+                                       test_cancelled_cannot_be_revived_into_a_taken_slot
 cancel frees the slot                  test_cancel_frees_slot
 patients see only their own            test_patient_cannot_see_others_appointments
 """
@@ -12,6 +16,7 @@ from datetime import time, timedelta
 
 from django.utils import timezone
 
+from accounts.models import User
 from accounts.testing import AccountsTestBase
 from appointments.models import Appointment, Doctor, DoctorAvailability
 
@@ -122,20 +127,74 @@ class AppointmentRoleTests(AppointmentBase):
         self.assertEqual(r.status_code, 201)
         self.assertEqual(r.data["patient"], self.patient_profile_1.id)
 
-    def test_staff_booking_needs_patient(self):
-        self.as_doctor()
+    def test_admin_booking_needs_patient(self):
+        self.as_admin()
         self.assertEqual(self.book(next_weekday_at(14)).status_code, 400)
         r = self.book(next_weekday_at(14), patient=self.patient_profile_2.id)
         self.assertEqual(r.status_code, 201)
         self.assertEqual(r.data["patient_mrn"], self.patient_profile_2.mrn)
 
+    def test_doctor_cannot_book(self):
+        self.as_doctor()
+        r = self.book(next_weekday_at(14), patient=self.patient_profile_1.id)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(Appointment.objects.count(), 0)
+        # doctors still manage existing appointments
+        self.as_p1()
+        aid = self.book(next_weekday_at(15)).data["id"]
+        self.as_doctor()
+        self.assertEqual(self.client.post(f"/api/appointments/{aid}/cancel/").status_code, 200)
+
     def test_staff_marks_completed_and_no_show(self):
+        past = timezone.now() - timedelta(hours=2)
+        a = Appointment.objects.create(patient=self.patient_profile_1, doctor=self.doctor, booked_by=self.admin_user,
+                                       start_time=past, end_time=past + timedelta(minutes=30))
+        self.as_doctor()
+        r = self.client.patch(f"/api/appointments/{a.id}/", dict(status="no_show"), format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["status"], "no_show")
+        # a finished visit is final
+        r = self.client.patch(f"/api/appointments/{a.id}/", dict(status="completed"), format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_future_visit_cannot_be_marked_completed(self):
         self.as_p1()
         aid = self.book(next_weekday_at(11)).data["id"]
         self.as_doctor()
-        r = self.client.patch(f"/api/appointments/{aid}/", dict(status="no_show"), format="json")
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.data["status"], "no_show")
+        for status in ("completed", "no_show"):
+            r = self.client.patch(f"/api/appointments/{aid}/", dict(status=status), format="json")
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("only after it has started", str(r.data))
+
+    def test_cancelled_cannot_be_revived_into_a_taken_slot(self):
+        self.as_p1()
+        aid = self.book(next_weekday_at(12)).data["id"]
+        self.client.post(f"/api/appointments/{aid}/cancel/")
+        self.as_p2()
+        self.assertEqual(self.book(next_weekday_at(12)).status_code, 201)  # slot taken by someone else
+        self.as_admin()
+        r = self.client.patch(f"/api/appointments/{aid}/", dict(status="scheduled"), format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(Appointment.objects.get(pk=aid).status, "cancelled")
+
+    def test_patient_cannot_be_in_two_places_at_once(self):
+        other = Doctor.objects.create(
+            user=User.objects.create_user(username="dr_other", password="x", role=User.Role.CLINICAL),
+            specialty="Radiology", license_no="L2")
+        self.as_p1()
+        start = next_weekday_at(10)
+        self.assertEqual(self.book(start).status_code, 201)
+        r = self.book(start + timedelta(minutes=15), doctor=other.id)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("another appointment", str(r.data))
+        self.assertEqual(self.book(start + timedelta(minutes=30), doctor=other.id).status_code, 201)
+
+    def test_bad_filters_are_400_not_500(self):
+        self.as_admin()
+        for q in ("doctor=abc", "patient=1x", "status=done", "date=2026-02-30", "date=tomorrow"):
+            self.assertEqual(self.client.get(f"/api/appointments/?{q}").status_code, 400, q)
+        self.assertEqual(self.client.get("/api/availability/?doctor=abc").status_code, 400)
+        self.assertEqual(self.client.get(f"/api/appointments/?doctor={self.doctor.id}").status_code, 200)
 
     def test_unauthenticated_blocked(self):
         self.assertEqual(self.client.get("/api/appointments/").status_code, 401)
@@ -213,6 +272,31 @@ class AvailabilityTests(AppointmentBase):
         self.assertEqual(self.client.post("/api/availability/", dict(doctor=self.doctor.id, day_of_week=6,
                                                                      start_time="10:00", end_time="11:00"),
                                           format="json").status_code, 403)
+
+    def test_doctor_changes_only_own_hours(self):
+        other = Doctor.objects.create(
+            user=User.objects.create_user(username="dr_other", password="x", role=User.Role.CLINICAL),
+            specialty="Radiology", license_no="L2")
+        theirs = DoctorAvailability.objects.create(doctor=other, day_of_week=0, start_time=time(9), end_time=time(12))
+        window = dict(doctor=other.id, day_of_week=2, start_time="13:00", end_time="15:00")
+        self.as_doctor()
+        self.assertEqual(self.client.post("/api/availability/", window, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/availability/{theirs.id}/").status_code, 404)
+        self.assertEqual(self.client.patch(f"/api/availability/{theirs.id}/", dict(end_time="13:00"),
+                                           format="json").status_code, 404)
+        mine = DoctorAvailability.objects.get(doctor=self.doctor, day_of_week=4)  # no clash with theirs
+        moved = self.client.patch(f"/api/availability/{mine.id}/", dict(doctor=other.id), format="json")
+        self.assertEqual(moved.status_code, 403)  # cannot hand a window to someone else either
+        self.assertEqual(len(self.client.get(f"/api/availability/?doctor={other.id}").data), 1)  # reading is fine
+        self.as_admin()
+        self.assertEqual(self.client.post("/api/availability/", window, format="json").status_code, 201)
+        self.assertEqual(self.client.delete(f"/api/availability/{theirs.id}/").status_code, 204)
+
+    def test_doctor_list_marks_own_profile(self):
+        self.as_doctor()
+        self.assertTrue(self.client.get("/api/doctors/").data[0]["is_me"])
+        self.as_p1()
+        self.assertFalse(self.client.get("/api/doctors/").data[0]["is_me"])
 
     def test_doctor_list_includes_availability(self):
         self.as_p1()

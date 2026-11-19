@@ -3,7 +3,8 @@
 Reports read the tables of other apps (billing, records). Those apps are imported only when
 they are installed, so the reports keep working (with zeros for the missing parts) before they are merged.
 
-  GET /api/reports/summary/?days=30                                  staff
+  GET /api/reports/summary/?days=30   staff. Appointment numbers cover the last `days` days;
+                                      patients and billing totals are all time.
   GET /api/reports/export/?type=invoices|appointments|patients       staff (CSV)
 """
 import csv
@@ -45,13 +46,15 @@ class SummaryView(APIView):
         now = timezone.now()
         since = now - timedelta(days=days)
 
-        appts = Appointment.objects.all()
-        per_day = (appts.filter(start_time__gte=since).annotate(d=TruncDate("start_time"))
+        # every appointment number covers the chosen period: visits that started in the last `days` days.
+        # Future bookings are counted separately in upcoming_appointments.
+        appts = Appointment.objects.filter(start_time__gte=since, start_time__lt=now)
+        per_day = (appts.annotate(d=TruncDate("start_time"))
                    .values("d").annotate(n=Count("id")).order_by("d"))
         per_doctor = (appts.exclude(status=Appointment.Status.CANCELLED)
                       .values("doctor_id", "doctor__user__first_name", "doctor__user__last_name", "doctor__user__username")
                       .annotate(n=Count("id")).order_by("-n"))
-        finished = appts.filter(start_time__lt=now, status__in=[Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW])
+        finished = appts.filter(status__in=[Appointment.Status.COMPLETED, Appointment.Status.NO_SHOW])
         no_show_rate = round(finished.filter(status=Appointment.Status.NO_SHOW).count() / finished.count(), 3) \
             if finished.exists() else 0
 
@@ -68,7 +71,7 @@ class SummaryView(APIView):
                  "name": f'{r["doctor__user__first_name"]} {r["doctor__user__last_name"]}'.strip()
                  or r["doctor__user__username"],
                  "count": r["n"]} for r in per_doctor],
-            "upcoming_appointments": appts.filter(start_time__gte=now, status=Appointment.Status.SCHEDULED).count(),
+            "upcoming_appointments": Appointment.objects.filter(start_time__gte=now, status=Appointment.Status.SCHEDULED).count(),
             "no_show_rate": no_show_rate,
             "top_diagnoses": [],
             "invoices_by_status": {},

@@ -2,10 +2,23 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { Bars, Msg, errorText } from "../../shared/ui.jsx";
+import { useQueryState } from "../../shared/url.js";
+
+const PERIODS = [7, 30, 90, 365];
 
 const Tile = ({ label, value, accent }) => <div className={`tile${accent ? " accent" : ""}`}><div className="label">{label}</div><div className="value">{value}</div></div>;
 const pairs = (o) => Object.entries(o || {}).map(([label, value]) => ({ label: label.replace("_", "-"), value }));
 const money = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const DownloadIcon = () => (
+  <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </svg>
+);
+const RefreshIcon = () => (
+  <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4" />
+  </svg>
+);
 const GENDER = { M: "Male", F: "Female", O: "Other" };
 
 function Chart({ title, data, note = "No data yet." }) {
@@ -18,8 +31,13 @@ function Chart({ title, data, note = "No data yet." }) {
 }
 
 function Reports() {
-  const [days, setDays] = useState(30), [s, setS] = useState(null), [msg, setMsg] = useState({});
-  const load = () => { setMsg({}); api(`/reports/summary/?days=${days}`).then(setS).catch((e) => setMsg({ text: errorText(e) })); };
+  const [rawDays, setDays] = useQueryState("days", "30"); // /reports?days=90
+  const days = PERIODS.includes(Number(rawDays)) ? Number(rawDays) : 30;
+  const [s, setS] = useState(null), [msg, setMsg] = useState({}), [busy, setBusy] = useState(false);
+  const load = () => {
+    setMsg({}); setBusy(true);
+    api(`/reports/summary/?days=${days}`).then(setS).catch((e) => setMsg({ text: errorText(e) })).finally(() => setBusy(false));
+  };
   useEffect(load, [days]);
 
   const download = async (type) => {
@@ -41,14 +59,18 @@ function Reports() {
       <div className="form-row">
         <label>Period
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            {[7, 30, 90, 365].map((d) => <option key={d} value={d}>Last {d} days</option>)}
+            {PERIODS.map((d) => <option key={d} value={d}>Last {d} days</option>)}
           </select>
         </label>
-        <button onClick={load}>Refresh</button>
+        <button className={`icon-btn${busy ? " spinning" : ""}`} onClick={load} disabled={busy} title="Refresh the numbers" aria-label="Refresh">
+          <RefreshIcon />
+        </button>
         <div className="spacer" />
         <div className="export-row">
           {["appointments", "patients", "invoices"].map((t) => (
-            <button key={t} onClick={() => download(t)} disabled={t === "invoices" && !billing} title={`Download ${t} as CSV`}>↓ {t} CSV</button>
+            <button key={t} className="with-icon" onClick={() => download(t)} disabled={t === "invoices" && !billing} title={`Download ${t} as CSV`}>
+              <DownloadIcon /> {t[0].toUpperCase() + t.slice(1)} CSV
+            </button>
           ))}
         </div>
       </div>

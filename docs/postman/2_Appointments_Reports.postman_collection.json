@@ -279,7 +279,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "pm.test('doctor profile exists. If this fails run: python manage.py seed', ()=>{ const j = pm.response.json(); pm.expect(Array.isArray(j) && j.length > 0).to.eql(true); });try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_id', String(j[0].id)); } catch (e) {}",
+                  "pm.test('doctor profile exists. If this fails run: python manage.py seed', ()=>{ const j = pm.response.json(); pm.expect(Array.isArray(j) && j.length > 0).to.eql(true); });try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_id', String((j.find(d => d.is_me) || j[0]).id)); } catch (e) {}",
                   ""
                 ]
               }
@@ -1585,7 +1585,7 @@
           ]
         },
         {
-          "name": "Staff books for a patient",
+          "name": "Admin books for a patient",
           "request": {
             "method": "POST",
             "header": [
@@ -1610,7 +1610,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{onco_doctor_token}}",
+                  "value": "{{onco_admin_token}}",
                   "type": "string"
                 }
               ]
@@ -1656,7 +1656,7 @@
           ]
         },
         {
-          "name": "Staff booking without patient -> 400",
+          "name": "Admin booking without patient -> 400",
           "request": {
             "method": "POST",
             "header": [
@@ -1681,7 +1681,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{onco_doctor_token}}",
+                  "value": "{{onco_admin_token}}",
                   "type": "string"
                 }
               ]
@@ -1720,6 +1720,77 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 400', function () { pm.expect([400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Doctor cannot book -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_doctor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"doctor\": \"{{onco_doctor_id}}\",\n  \"start_time\": \"{{onco_slot_start}}\",\n  \"end_time\": \"{{onco_slot_end}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); let off = 1 + Math.floor(Math.random()*90);",
+                  "d.setUTCDate(d.getUTCDate()+off);",
+                  "while ([0,6].includes(new Date(d.toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())) d.setUTCDate(d.getUTCDate()+1);",
+                  "const day = d.toISOString().slice(0,10);",
+                  "const h = 10 + Math.floor(Math.random()*6), m = Math.random() < 0.5 ? '00' : '30';",
+                  "const start = `${day}T${h}:${m}:00+02:00`;",
+                  "const endM = m === '00' ? '30' : '00', endH = m === '00' ? h : h+1;",
+                  "pm.collectionVariables.set('onco_slot_start', start);",
+                  "pm.collectionVariables.set('onco_slot_end', `${day}T${String(endH).padStart(2,'0')}:${endM}:00+02:00`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
                   ""
                 ]
               }

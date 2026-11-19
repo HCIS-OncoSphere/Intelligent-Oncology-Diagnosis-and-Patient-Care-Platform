@@ -37,8 +37,22 @@ export const Logo = () => (
 /** Coloured pill for any status word, e.g. scheduled, paid, failed. */
 export const Badge = ({ s }) => <span className={`badge ${s}`}>{String(s).replace("_", "-")}</span>;
 
-/** Green (ok) or red message line. Pass { ok, text }. Renders nothing when there is no text. */
-export const Msg = ({ m }) => (m && m.text ? <div className={`msg ${m.ok ? "ok" : "err"}`} role="status">{m.text}</div> : null);
+/** Green (ok) or red message line. Pass { ok, text }. Renders nothing when there is no text.
+ *  A success message fades away after 5 seconds; every message has a close button. */
+export function Msg({ m }) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    setHidden(false);
+    if (m?.text && m.ok) { const t = setTimeout(() => setHidden(true), 5000); return () => clearTimeout(t); }
+  }, [m]);
+  if (!m || !m.text || hidden) return null;
+  return (
+    <div className={`msg ${m.ok ? "ok" : "err"}`} role="status">
+      <span>{m.text}</span>
+      <button type="button" className="msg-close" aria-label="Dismiss" onClick={() => setHidden(true)}>×</button>
+    </div>
+  );
+}
 
 export function Bars({ data }) {
   const max = Math.max(1, ...data.map((d) => d.value));
