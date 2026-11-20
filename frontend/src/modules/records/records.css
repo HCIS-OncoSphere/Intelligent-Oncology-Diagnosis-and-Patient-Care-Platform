@@ -1,0 +1,88 @@
+.records-page > label {
+  display: flex;
+  width: min(100%, 28rem);
+  margin: 0 0 18px;
+}
+.records-page .records-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.records-page > fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  margin: 0 0 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.records-page > fieldset > legend {
+  padding: 0;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+.records-page > fieldset > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  align-content: start;
+  gap: 14px 16px;
+  min-width: 0;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.records-page > fieldset > form:first-of-type {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.records-page > fieldset h3,
+.records-page label:has([name="description"]) {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.records-page label:has([name="notes"]) { grid-column: span 3; }
+.records-page form label {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+  margin: 0;
+}
+.records-page :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+}
+.records-page textarea { resize: vertical; }
+.records-page > fieldset form > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.records-page > fieldset form > button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+.records-page > h3 { margin: 24px 0 10px; }
+.records-page .table-wrap { max-width: 100%; overflow-x: auto; }
+.records-page td { vertical-align: top; overflow-wrap: anywhere; }
+.records-page td form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.records-page td form > select { width: auto; }
+@media (max-width: 760px) {
+  .records-page > fieldset { grid-template-columns: 1fr; }
+  .records-page > fieldset > form:first-of-type { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .records-page label:has([name="notes"]),
+  .records-page label:has([name="code"]) { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .records-page .records-summary,
+  .records-page > fieldset > form,
+  .records-page > fieldset > form:first-of-type { grid-template-columns: 1fr; }
+}

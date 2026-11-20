@@ -10,6 +10,8 @@ urlpatterns = [
     path("api/", include("accounts.urls")),
     path("api/", include("patients.urls")),
     path("api/", include("appointments.urls")),
+    path("api/", include("billing.urls")),
+    path("api/", include("records.urls")),
     path("api/reports/", include("reports.urls")),
     path("api/", include("administration.urls")),
     path("api/", include(router.urls)),
