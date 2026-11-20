@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "patients",
     "appointments",
     "reports",
+    "administration",
 ]
 
 MIDDLEWARE = [
@@ -40,6 +41,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "administration.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
