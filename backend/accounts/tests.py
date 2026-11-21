@@ -61,6 +61,68 @@ class AccountsAuthTests(AccountsTestBase):
         self.assertEqual(res.status_code, 400)
 
 
+class RegistrationValidationTests(AccountsTestBase):
+    def payload(self, **over):
+        base = {
+            "username": "laila_h",
+            "password": "Tumor-Board-2026",
+            "email": "laila@test.com",
+            "first_name": "Laila",
+            "last_name": "Hassan",
+            "date_of_birth": "1990-03-02",
+            "gender": "F",
+            "phone": "01055556666",
+        }
+        base.update(over)
+        return base
+
+    def register(self, **over):
+        return self.client.post("/api/auth/register/", self.payload(**over), format="json")
+
+    def test_registration_creates_patient_profile(self):
+        from patients.models import Patient
+        res = self.register()
+        self.assertEqual(res.status_code, 201)
+        p = Patient.objects.get(user__username="laila_h")
+        self.assertEqual(p.gender, "F")
+        self.assertTrue(p.mrn.startswith("MRN-"))
+
+    def test_weak_passwords_rejected(self):
+        for pw in ("12345678", "password123", "laila_h1"):
+            res = self.register(password=pw)
+            self.assertEqual(res.status_code, 400, pw)
+            self.assertIn("password", res.data)
+
+    def test_duplicates_are_case_insensitive(self):
+        res = self.register(email="PATIENT@oncosphere.local")
+        self.assertIn("email", res.data)
+        res = self.register(username="ADMIN_TEST")
+        self.assertIn("username", res.data)
+
+    def test_invalid_gender_and_future_birth_date_rejected(self):
+        res = self.register(gender="Female", date_of_birth="2999-01-01")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("gender", res.data)
+        self.assertIn("date_of_birth", res.data)
+
+    def test_missing_birth_date_rejected(self):
+        payload = self.payload()
+        del payload["date_of_birth"]
+        res = self.client.post("/api/auth/register/", payload, format="json")
+        self.assertIn("date_of_birth", res.data)
+
+    def test_registered_user_can_sign_in_with_email(self):
+        self.register(email="Laila@Test.com")
+        res = self.client.post("/api/auth/login/", {"username": "laila@test.com", "password": "Tumor-Board-2026"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("access", res.data)
+
+    def test_registration_cannot_create_staff(self):
+        res = self.register(role="admin")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(User.objects.get(username="laila_h").role, "patient")
+
+
 class AccountsUserManagementTests(AccountsTestBase):
     def test_admin_can_list_users(self):
         self.login_user("admin_test", "AdminPassword123!")

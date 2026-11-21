@@ -7,6 +7,12 @@ class Doctor(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor")
     specialty = models.CharField(max_length=100)
     license_no = models.CharField(max_length=50, unique=True)
+    # Shown on the doctor's profile page; the doctor fills these in.
+    bio = models.TextField(blank=True)
+    years_experience = models.PositiveSmallIntegerField(null=True, blank=True)
+    education = models.CharField(max_length=200, blank=True)
+    languages = models.CharField(max_length=200, blank=True)    # comma-separated, e.g. "Arabic, English"
+    focus_areas = models.CharField(max_length=300, blank=True)  # comma-separated, e.g. "Breast cancer, Lung cancer"
 
     def __str__(self):
         return f"Dr. {self.user.get_full_name() or self.user.username}"

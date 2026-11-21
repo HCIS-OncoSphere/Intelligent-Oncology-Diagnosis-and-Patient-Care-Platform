@@ -37,13 +37,15 @@ function clearTokens() {
  */
 export async function api(path, { method = "GET", body, _isRetry = false } = {}) {
   const access = getAccess();
+  // FormData (file uploads) is sent as-is so the browser sets the multipart boundary itself.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const res = await fetch("/api" + path, {
     method,
     headers: {
-      "Content-Type": "application/json",
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(access ? { Authorization: `Bearer ${access}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: isForm ? body : body ? JSON.stringify(body) : undefined,
   });
 
   const data = res.status === 204 ? null : await res.json().catch(() => null);
@@ -97,6 +99,12 @@ export async function login(username, password) {
   // Persist both access and refresh tokens so refresh survives page reload
   storeTokens(tokens);
   return api("/auth/me/");
+}
+
+/** Patient self-registration. Throws { status, data } with per-field errors on 400. */
+export function register(fields) {
+  clearTokens(); // a stale token must not be sent with a public sign-up
+  return api("/auth/register/", { method: "POST", body: fields });
 }
 
 export function logout() {

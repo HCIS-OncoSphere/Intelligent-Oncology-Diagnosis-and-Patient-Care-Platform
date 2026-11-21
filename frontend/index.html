@@ -1,2 +1,6 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>OncoSphere</title></head>
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>OncoSphere</title><link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!-- pick light/dark before anything is drawn, so the page never flashes the wrong theme -->
+<script>(function () { var t; try { t = localStorage.getItem("theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t); })();</script></head>
 <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>

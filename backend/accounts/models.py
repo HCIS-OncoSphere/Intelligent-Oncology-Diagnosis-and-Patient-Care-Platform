@@ -1,5 +1,17 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+# Random file names, so photo URLs can't be guessed from the user id.
+# (Top-level functions because migrations store a reference to them.)
+def avatar_upload_to(instance, filename):
+    return f"avatars/{instance.pk or 'new'}/{uuid.uuid4().hex}.jpg"
+
+
+def cover_upload_to(instance, filename):
+    return f"covers/{instance.pk or 'new'}/{uuid.uuid4().hex}.jpg"
 
 
 class User(AbstractUser):
@@ -14,6 +26,10 @@ class User(AbstractUser):
 
     # Enforce unique email address across all user accounts
     email = models.EmailField(unique=True)
+
+    # Profile pictures. Uploads are resized and re-encoded as JPEG (see accounts/profile.py).
+    avatar = models.ImageField(upload_to=avatar_upload_to, blank=True)
+    cover = models.ImageField(upload_to=cover_upload_to, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.role})"

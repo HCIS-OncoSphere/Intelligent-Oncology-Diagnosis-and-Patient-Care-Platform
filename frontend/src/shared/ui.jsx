@@ -26,10 +26,14 @@ export const Field = ({ label, ...p }) => (
   <label>{label}<input {...p} /></label>
 );
 
+// The cancer-awareness ribbon inside a sphere ("Onco" + "Sphere"). Same drawing as public/favicon.svg.
+const RIBBON = "M12 3c-2.2 0-3.5 1.8-3.5 3.8 0 2.4 1.6 4.6 3.5 7.2l4.5 7M12 3c2.2 0 3.5 1.8 3.5 3.8 0 2.4-1.6 4.6-3.5 7.2l-4.5 7";
+
 export const Logo = () => (
   <span className="brand-mark" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14M5 12h14" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d={RIBBON} strokeWidth="3.2" transform="translate(12 12) scale(.62) translate(-12 -12)" />
     </svg>
   </span>
 );

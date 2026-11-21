@@ -24,7 +24,9 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user, context={"request": request}).data)
+        data = UserSerializer(request.user, context={"request": request}).data
+        data["avatar"] = request.user.avatar.url if request.user.avatar else None  # relative, like /api/profile/
+        return Response(data)
 
     def patch(self, request):
         """Allow users to update their own profile, but block changes to role and is_active."""
