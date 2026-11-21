@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "reports",
     "billing",
     "records",
+    "integration.apps.IntegrationConfig",
     "administration",
 ]
 
