@@ -353,7 +353,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"other_{{$timestamp}}\",\n  \"password\": \"Secret1234\",\n  \"email\": \"o@example.com\",\n  \"first_name\": \"Other\",\n  \"last_name\": \"Patient\",\n  \"date_of_birth\": \"1992-02-02\",\n  \"gender\": \"M\"\n}",
+              "raw": "{\n  \"username\": \"other_{{$timestamp}}\",\n  \"password\": \"Secret1234\",\n  \"email\": \"o_{{$timestamp}}@example.com\",\n  \"first_name\": \"Other\",\n  \"last_name\": \"Patient\",\n  \"date_of_birth\": \"1992-02-02\",\n  \"gender\": \"M\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

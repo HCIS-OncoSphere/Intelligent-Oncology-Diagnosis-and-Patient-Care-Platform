@@ -28,6 +28,7 @@ class Hl7MessageViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"])
     def resend(self, request, pk=None):
-        if not settings.HL7_ENABLED:
-            return Response({"detail": "HL7 sending is disabled (set HL7_ENABLED=1)."}, status=409)
+        msg = self.get_object()
+        if msg.status not in ("queued", "failed"):
+            return Response({"detail": "Only queued or failed messages can be resent."}, status=409)
         return Response(Hl7Serializer(transmit(self.get_object())).data)
