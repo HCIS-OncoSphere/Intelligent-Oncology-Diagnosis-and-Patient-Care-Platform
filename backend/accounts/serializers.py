@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 from django.contrib.auth.password_validation import validate_password
@@ -78,15 +79,25 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
+def make_username(email):
+    """Username for a self-registered patient: the part of the email before @, kept to
+    letters, digits and . _ + -, with a number added if it's taken (mona.adel, mona.adel2, ...)."""
+    base = re.sub(r"[^A-Za-z0-9._+-]", "", email.split("@")[0]).lower()[:30] or "patient"
+    name, n = base, 1
+    while User.objects.filter(username__iexact=name).exists():
+        n += 1
+        name = f"{base}{n}"
+    return name
+
+
 class RegisterSerializer(serializers.Serializer):
     GENDERS = [("M", "Male"), ("F", "Female"), ("O", "Other")]
 
-    username = serializers.RegexField(
-        r"^[\w.@+-]+$", max_length=150,
-        error_messages={"invalid": "Use letters, numbers and . @ + - _ only."},
-    )
+    # No username field: the system makes one from the email (see make_username) and
+    # patients sign in with their email. A "username" sent by an old client is ignored.
     password = serializers.CharField(write_only=True, min_length=8)
     email = serializers.EmailField()
+    # names may be in any language (Arabic included)
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
     # DOB is required — a missing date of birth must be an explicit error in a
@@ -95,13 +106,10 @@ class RegisterSerializer(serializers.Serializer):
     gender = serializers.ChoiceField(choices=GENDERS, required=False, default="O")
     phone = serializers.CharField(required=False, allow_blank=True, max_length=30)
 
-    def validate_username(self, v):
-        if User.objects.filter(username__iexact=v).exists():
-            raise serializers.ValidationError("Username already taken.")
-        return v
-
     def validate_email(self, v):
         v = v.strip().lower()
+        if not v.isascii():
+            raise serializers.ValidationError("Use an email address written in English letters, like name@example.com.")
         if User.objects.filter(email__iexact=v).exists():
             raise serializers.ValidationError("Email already registered.")
         return v
@@ -114,10 +122,10 @@ class RegisterSerializer(serializers.Serializer):
         return v
 
     def validate(self, attrs):
-        # Run the AUTH_PASSWORD_VALIDATORS from settings (common, numeric-only,
-        # too similar to the username/email ...), same as Django's own forms.
+        # Run the AUTH_PASSWORD_VALIDATORS from settings (at least 8 characters,
+        # not only numbers), same as Django's own forms.
         candidate = User(
-            username=attrs.get("username"), email=attrs.get("email"),
+            email=attrs.get("email"),
             first_name=attrs.get("first_name"), last_name=attrs.get("last_name"),
         )
         try:
@@ -131,7 +139,7 @@ class RegisterSerializer(serializers.Serializer):
         # Atomic: if the patient profile cannot be created, the login account
         # is rolled back too, so the username/email stay free to retry.
         user = User.objects.create_user(
-            username=d["username"],
+            username=make_username(d["email"]),
             password=d["password"],
             email=d["email"],
             first_name=d["first_name"],

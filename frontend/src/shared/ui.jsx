@@ -33,7 +33,8 @@ export const Logo = () => (
   <span className="brand-mark" aria-hidden="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
-      <path d={RIBBON} strokeWidth="3.2" transform="translate(12 12) scale(.62) translate(-12 -12)" />
+      {/* the ribbon is orange (--logo-ribbon in styles.css); the ring follows the badge's text color */}
+      <path d={RIBBON} strokeWidth="3.2" stroke="var(--logo-ribbon, currentColor)" transform="translate(12 12) scale(.62) translate(-12 -12)" />
     </svg>
   </span>
 );

@@ -150,6 +150,8 @@ function PatientView({ p }) {
         <Card icon="user" tone="blue" title="Contact details">
           <Row icon="phone" label="Phone">{pt.phone || p.phone}</Row>
           <Row icon="mail" label="Email">{p.email}</Row>
+          {/* made by the system at sign-up; shown only to its owner */}
+          {p.is_me && <Row icon="user" label="Username">{p.username}</Row>}
           <Row icon="mapPin" label="Address">{pt.address}</Row>
           <Row icon="cake" label="Date of birth">{fmtDate(pt.date_of_birth, { day: "numeric", month: "long", year: "numeric" })}</Row>
         </Card>
@@ -232,6 +234,7 @@ function DoctorView({ p }) {
             ))}
           </div>
           <Row icon="mail" label="Email">{p.email}</Row>
+          {p.is_me && <Row icon="user" label="Username">{p.username}</Row>}
           <Row icon="phone" label="Phone">{p.phone}</Row>
         </Card>
 

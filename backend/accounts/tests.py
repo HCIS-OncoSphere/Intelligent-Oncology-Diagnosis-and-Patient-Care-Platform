@@ -34,7 +34,7 @@ class AccountsAuthTests(AccountsTestBase):
 
     def test_patient_self_registration(self):
         payload = {
-            "username": "new_patient",
+            "username": "chosen_by_client",  # ignored: the system makes the username
             "password": "SecurePassword123!",
             "email": "new_patient@test.com",
             "first_name": "Mona",
@@ -45,26 +45,26 @@ class AccountsAuthTests(AccountsTestBase):
         }
         res = self.client.post("/api/auth/register/", payload, format="json")
         self.assertEqual(res.status_code, 201)
-        self.assertEqual(res.data["username"], "new_patient")
+        self.assertEqual(res.data["username"], "new_patient")  # from the email
         self.assertEqual(res.data["role"], "patient")
-        self.assertTrue(User.objects.filter(username="new_patient").exists())
+        self.assertFalse(User.objects.filter(username="chosen_by_client").exists())
 
-    def test_register_duplicate_username_rejected(self):
+    def test_username_gets_a_number_when_taken(self):
         payload = {
-            "username": "admin_test",
             "password": "SecurePassword123!",
-            "email": "other@test.com",
+            "email": "Admin_Test@other.com",  # "admin_test" already exists
             "first_name": "Test",
             "last_name": "User",
+            "date_of_birth": "1990-01-01",
         }
         res = self.client.post("/api/auth/register/", payload, format="json")
-        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["username"], "admin_test2")
 
 
 class RegistrationValidationTests(AccountsTestBase):
     def payload(self, **over):
         base = {
-            "username": "laila_h",
             "password": "Tumor-Board-2026",
             "email": "laila@test.com",
             "first_name": "Laila",
@@ -83,21 +83,34 @@ class RegistrationValidationTests(AccountsTestBase):
         from patients.models import Patient
         res = self.register()
         self.assertEqual(res.status_code, 201)
-        p = Patient.objects.get(user__username="laila_h")
+        p = Patient.objects.get(user__username="laila")  # from laila@test.com
         self.assertEqual(p.gender, "F")
         self.assertTrue(p.mrn.startswith("MRN-"))
 
-    def test_weak_passwords_rejected(self):
-        for pw in ("12345678", "password123", "laila_h1"):
+    def test_password_rules_shown_on_the_page_are_enforced(self):
+        # too short, and only numbers
+        for pw in ("Ab1!", "1234567890"):
             res = self.register(password=pw)
             self.assertEqual(res.status_code, 400, pw)
             self.assertIn("password", res.data)
 
-    def test_duplicates_are_case_insensitive(self):
+    def test_no_similarity_or_common_password_errors(self):
+        # only the rules on the page apply: no "too similar to the username" / "too common" messages
+        for i, pw in enumerate(("laila123", "password123")):
+            res = self.register(email=f"laila{i}@test.com", password=pw)
+            self.assertEqual(res.status_code, 201, (pw, res.data))
+
+    def test_duplicate_email_is_case_insensitive(self):
         res = self.register(email="PATIENT@oncosphere.local")
         self.assertIn("email", res.data)
-        res = self.register(username="ADMIN_TEST")
-        self.assertIn("username", res.data)
+
+    def test_arabic_names_allowed_but_email_must_be_english(self):
+        res = self.register(first_name="منة", last_name="حسن")
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(User.objects.get(username="laila").first_name, "منة")
+        res = self.register(email="منة@test.com")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("email", res.data)
 
     def test_invalid_gender_and_future_birth_date_rejected(self):
         res = self.register(gender="Female", date_of_birth="2999-01-01")
@@ -120,7 +133,7 @@ class RegistrationValidationTests(AccountsTestBase):
     def test_registration_cannot_create_staff(self):
         res = self.register(role="admin")
         self.assertEqual(res.status_code, 201)
-        self.assertEqual(User.objects.get(username="laila_h").role, "patient")
+        self.assertEqual(User.objects.get(username="laila").role, "patient")
 
 
 class AccountsUserManagementTests(AccountsTestBase):

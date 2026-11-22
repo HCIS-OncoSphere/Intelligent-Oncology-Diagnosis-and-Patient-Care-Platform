@@ -3,10 +3,10 @@
 .tone-teal   { --tone: var(--primary); }
 .tone-blue   { --tone: var(--info); }
 .tone-violet { --tone: var(--violet); }
-.tone-amber  { --tone: var(--warn); }
+.tone-amber  { --tone: var(--accent); }
 .tone-green  { --tone: var(--ok); }
 .tone-red    { --tone: var(--danger); }
-.tone-rose   { --tone: #c2477a; }
+.tone-rose   { --tone: #db2777; }
 .tone-plain  { --tone: var(--muted); }
 :root[data-theme="dark"] .tone-rose { --tone: #f08fb6; }
 
@@ -14,9 +14,10 @@
 .pf-cover {
   position: relative; height: 250px;
   background:
-    radial-gradient(600px 260px at 85% -20%, rgba(255, 255, 255, .16), transparent 70%),
+    radial-gradient(600px 260px at 85% -20%, rgba(255, 255, 255, .14), transparent 70%),
+    radial-gradient(420px 220px at 8% 120%, var(--hero-glow), transparent 70%),
     repeating-linear-gradient(135deg, rgba(255, 255, 255, .045) 0 1px, transparent 1px 14px),
-    linear-gradient(120deg, var(--hero-a) 0%, var(--hero-b) 60%, #13385c 100%);
+    linear-gradient(120deg, var(--hero-a) 0%, var(--hero-b) 62%, #6d28d9 100%);
   background-size: cover; background-position: center;
 }
 .pf-cover.has-image::after { /* keeps the button readable on bright photos */
@@ -121,7 +122,7 @@ button.pf-cam:hover:not(:disabled) { background: var(--primary); color: var(--on
 .pf-stage { display: inline-flex; align-items: center; gap: 10px; }
 .pf-stage-bars { display: inline-flex; gap: 3px; }
 .pf-stage-bars i { width: 16px; height: 7px; border-radius: 4px; background: var(--border); }
-.pf-stage-bars i.on { background: var(--warn); }
+.pf-stage-bars i.on { background: var(--accent); }
 
 .pf-event, .pf-slot { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--border); }
 .pf-event:first-of-type, .pf-slot:first-of-type { border-top: 0; }

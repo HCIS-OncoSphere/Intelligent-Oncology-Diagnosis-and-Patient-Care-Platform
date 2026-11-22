@@ -6,8 +6,10 @@ import { Alert, AuthField, AuthLayout, Icon, PasswordField, SubmitButton, reques
 
 const EMPTY = {
   first_name: "", last_name: "", date_of_birth: "", gender: "",
-  email: "", phone: "", username: "", password: "", confirm: "",
+  email: "", phone: "", password: "", confirm: "",
 };
+// English-letter email (names can be Arabic; the email can't).
+const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const GENDERS = [["F", "Female"], ["M", "Male"], ["O", "Other"]];
 // Local calendar date as YYYY-MM-DD (toISOString alone would give the UTC date).
 const today = () => {
@@ -37,10 +39,12 @@ function check(f) {
   need("date_of_birth", "Enter your date of birth.");
   need("gender", "Choose one.");
   need("email", "Enter your email address.");
-  need("username", "Choose a username.");
   if (f.date_of_birth && f.date_of_birth > today()) e.date_of_birth = "Date of birth can't be in the future.";
-  if (f.email && !/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = "Enter a valid email address.";
-  if (f.username && !/^[\w.@+-]+$/.test(f.username.trim())) e.username = "Use letters, numbers and . @ + - _ only.";
+  if (f.email.trim() && !EMAIL.test(f.email.trim())) {
+    e.email = /[^\x00-\x7F]/.test(f.email)
+      ? "Write the email in English letters, like name@example.com."
+      : "Enter a valid email address, like name@example.com.";
+  }
   if (f.password.length < 8) e.password = "Use at least 8 characters.";
   else if (/^\d+$/.test(f.password)) e.password = "Mix in letters, not only numbers.";
   if (!f.confirm) e.confirm = "Type your password again.";
@@ -79,8 +83,9 @@ export default function Register({ onDone }) {
     }
     setBusy(true);
     const { confirm, ...body } = f;
-    body.username = body.username.trim();
     body.email = body.email.trim();
+    body.first_name = body.first_name.trim();
+    body.last_name = body.last_name.trim();
     try {
       await register(body);
     } catch (ex) {
@@ -94,7 +99,8 @@ export default function Register({ onDone }) {
       return;
     }
     try {
-      onDone(await login(body.username, body.password));
+      // the system made the username; signing in with the email works the same
+      onDone(await login(body.email, body.password));
     } catch {
       // The account exists; only the automatic sign-in failed.
       setBusy(false);
@@ -116,9 +122,9 @@ export default function Register({ onDone }) {
           <h3 className="auth-section-title" id="sec-about">About you</h3>
           <div className="auth-row">
             <AuthField label="First name" value={f.first_name} onChange={set("first_name")}
-                       autoComplete="given-name" error={err("first_name")} autoFocus />
+                       autoComplete="given-name" dir="auto" error={err("first_name")} autoFocus />
             <AuthField label="Last name" value={f.last_name} onChange={set("last_name")}
-                       autoComplete="family-name" error={err("last_name")} />
+                       autoComplete="family-name" dir="auto" error={err("last_name")} />
           </div>
           <div className="auth-row">
             <AuthField label="Date of birth" type="date" icon="calendar" value={f.date_of_birth}
@@ -145,17 +151,15 @@ export default function Register({ onDone }) {
           <div className="auth-row">
             <AuthField label="Email" type="email" icon="mail" value={f.email} onChange={set("email")}
                        autoComplete="email" autoCapitalize="none" spellCheck={false} error={err("email")}
-                       placeholder="name@example.com" />
+                       placeholder="name@example.com" dir="ltr"
+                       hint="You'll sign in with this email. English letters only." />
             <AuthField label="Phone (optional)" type="tel" icon="phone" value={f.phone} onChange={set("phone")}
                        autoComplete="tel" error={err("phone")} placeholder="01X XXXX XXXX" />
           </div>
         </section>
 
         <section className="auth-section" aria-labelledby="sec-signin">
-          <h3 className="auth-section-title" id="sec-signin">Sign-in details</h3>
-          <AuthField label="Username" icon="user" value={f.username} onChange={set("username")}
-                     autoComplete="username" autoCapitalize="none" spellCheck={false} error={err("username")}
-                     hint="You can sign in with this or your email." />
+          <h3 className="auth-section-title" id="sec-signin">Password</h3>
           <div className="auth-row">
             <PasswordField label="Password" value={f.password} onChange={set("password")}
                            autoComplete="new-password" error={err("password")} />

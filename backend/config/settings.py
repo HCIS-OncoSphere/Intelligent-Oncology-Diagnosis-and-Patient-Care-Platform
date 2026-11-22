@@ -86,11 +86,11 @@ else:
 
 AUTH_USER_MODEL = "accounts.User"
 
+# Password rules = the ones shown on the sign-up page: at least 8 characters, not only numbers.
+# (No "too similar to your username" / "too common" checks: their messages confused users.)
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
 ]
 
 STATIC_URL = "static/"

@@ -185,6 +185,8 @@ class ProfileUpdateSerializer(serializers.Serializer):
 
     def validate_email(self, v):
         v = v.strip().lower()
+        if not v.isascii():
+            raise serializers.ValidationError("Use an email address written in English letters, like name@example.com.")
         if User.objects.filter(email__iexact=v).exclude(pk=self.context["user"].pk).exists():
             raise serializers.ValidationError("Email already registered.")
         return v
