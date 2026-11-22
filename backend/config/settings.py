@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "accounts",
     "patients",
     "appointments",
+    "imaging",
     "reports",
     "billing",
     "records",
@@ -133,3 +134,7 @@ SPECTACULAR_SETTINGS = {"TITLE": "OncoSphere API", "VERSION": "0.2.0"}
 HL7_ENABLED = os.getenv("HL7_ENABLED", "0") == "1"
 HL7_HOST = os.getenv("HL7_HOST", "127.0.0.1")
 HL7_PORT = int(os.getenv("HL7_PORT", "2575"))
+
+
+# Orthanc (DICOM archive) used by the imaging app
+ORTHANC_URL = os.getenv("ORTHANC_URL", "http://localhost:8042")
