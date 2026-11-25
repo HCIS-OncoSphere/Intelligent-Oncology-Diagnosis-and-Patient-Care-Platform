@@ -47,6 +47,8 @@
   margin: 0;
 }
 .records-page label:has([name="notes"]) { grid-column: span 3; }
+.records-page .records-appointment,
+.records-page .records-recommendation { grid-column: span 2; }
 .records-page form label {
   display: flex;
   min-width: 0;
@@ -71,10 +73,45 @@
   background: var(--primary-hover);
 }
 .records-page > h3 { margin: 24px 0 10px; }
+.records-history-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 24px 0 10px;
+}
+.records-history-heading h3 { margin: 0; }
+.records-page td small,
+.records-print td small { display: block; margin-top: 6px; }
+.records-page td > button { display: block; margin-top: 8px; }
 .records-page .table-wrap { max-width: 100%; overflow-x: auto; }
 .records-page td { vertical-align: top; overflow-wrap: anywhere; }
 .records-page td form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .records-page td form > select { width: auto; }
+.records-print { display: none; }
+
+@media print {
+  body:has(> .records-print) > :not(.records-print) { display: none !important; }
+  .records-print {
+    display: block;
+    background: #fff;
+    color: #000;
+    font-size: 10pt;
+  }
+  .records-print h2 { break-after: avoid; }
+  .records-print .table-wrap { overflow: visible; border: 0; box-shadow: none; }
+  .records-print table { width: 100%; min-width: 0; }
+  .records-print tr { break-inside: avoid; }
+  .records-print :is(th, td) {
+    padding: 6px;
+    background: #fff;
+    color: #000;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+}
 @media (max-width: 760px) {
   .records-page > fieldset { grid-template-columns: 1fr; }
   .records-page > fieldset > form:first-of-type { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -85,4 +122,41 @@
   .records-page .records-summary,
   .records-page > fieldset > form,
   .records-page > fieldset > form:first-of-type { grid-template-columns: 1fr; }
+  .records-page .records-appointment,
+  .records-page .records-recommendation { grid-column: 1 / -1; }
+}
+
+.records-directory {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: clamp(18px, 4vw, 32px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.records-directory h2 { margin: 0; }
+.records-directory header p { margin: 6px 0 22px; color: var(--muted); }
+.records-directory-search { display: grid; gap: 6px; }
+.records-match-count { margin: 18px 0 8px; font-size: .875rem; color: var(--muted); }
+.records-patient-list { margin: 0; padding: 0; list-style: none; }
+.records-patient-list li + li { border-top: 1px solid var(--border); }
+.records-patient-list button {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 14px 8px; text-align: left; border: 0;
+  background: transparent; color: var(--text); cursor: pointer;
+}
+.records-patient-list button:is(:hover, :focus-visible) { background: var(--surface-2); }
+.records-patient-list button:focus-visible { outline: 2px solid var(--primary); }
+.records-initials {
+  display: grid; place-items: center; flex: 0 0 40px; height: 40px;
+  border-radius: 50%; background: var(--surface-2); color: var(--primary); font-weight: 700;
+}
+.records-person { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.records-person small { color: var(--muted); }
+.records-open { margin-left: auto; white-space: nowrap; color: var(--primary); }
+.records-back { margin-bottom: 12px; }
+@media (max-width: 480px) {
+  .records-patient-list button { gap: 8px; }
+  .records-open { font-size: .8rem; }
 }

@@ -1,11 +1,16 @@
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.permissions import IsStaffRole
 from appointments.models import Appointment
+from appointments.views import AppointmentSerializer, AppointmentViewSet
 from billing.models import ICD10Code
 from billing.views import InvoiceSerializer
 from patients.models import Patient
@@ -47,7 +52,16 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         fields = ["id", "medication", "dosage", "frequency", "duration", "instructions"]
 
 
+class FollowUpAppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ["id", "start_time", "status"]
+
+
 class RecordSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.StringRelatedField(source="doctor")
+    appointment_start_time = serializers.DateTimeField(source="appointment.start_time", read_only=True, allow_null=True)
+    follow_up_appointment = FollowUpAppointmentSerializer(read_only=True)
     diagnoses = serializers.SerializerMethodField()
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
     diagnoses_in = DiagnosisIn(many=True, write_only=True, required=False)
@@ -55,23 +69,19 @@ class RecordSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MedicalRecord
-        fields = ["id", "patient", "doctor", "appointment", "notes", "created_at",
+        fields = ["id", "patient", "doctor", "doctor_name", "appointment", "appointment_start_time", "notes", "created_at",
+                  "follow_up_recommendation", "follow_up_appointment",
                   "diagnoses", "prescriptions", "diagnoses_in", "prescriptions_in"]
         read_only_fields = ["doctor", "created_at"]
 
     def get_diagnoses(self, obj):
         return [{"icd10_code": d.icd10_code_id, "description": d.icd10_code.description, "is_primary": d.is_primary}
-                for d in obj.diagnoses.select_related("icd10_code")]
+                for d in obj.diagnoses.all()]
 
     def validate(self, d):
-        appt = d.get("appointment")
-        if appt and appt.patient_id != d["patient"].id:
-            raise serializers.ValidationError("Appointment belongs to a different patient.")
         dx = d.get("diagnoses_in", [])
         if len({x["icd10_code"].pk for x in dx}) != len(dx):
             raise serializers.ValidationError("Each diagnosis code may appear once.")
-        if appt and (appt.start_time > timezone.now() or appt.status != Appointment.Status.SCHEDULED):
-            raise serializers.ValidationError("Select a scheduled appointment that has already started.")
         if sum(1 for x in dx if x["is_primary"]) > 1:
             raise serializers.ValidationError("Only one primary diagnosis is allowed.")
         return d
@@ -79,13 +89,20 @@ class RecordSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, data):
         dx, rx = data.pop("diagnoses_in", []), data.pop("prescriptions_in", [])
-        rec = MedicalRecord.objects.create(doctor=current_doctor(self.context["request"]), **data)
+        doctor = current_doctor(self.context["request"])
+        if appointment := data.get("appointment"):
+            updated = Appointment.objects.filter(
+                pk=appointment.pk, patient=data["patient"], doctor=doctor,
+                start_time__lte=timezone.now(), status=Appointment.Status.SCHEDULED,
+            ).update(status=Appointment.Status.COMPLETED)
+            if not updated:
+                raise serializers.ValidationError({"appointment": "Select a started, scheduled appointment for this patient with you."})
+            data["appointment_id"] = data.pop("appointment").pk
+        rec = MedicalRecord.objects.create(doctor=doctor, **data)
         for x in dx:
             RecordDiagnosis.objects.create(record=rec, **x)
         for x in rx:
             Prescription.objects.create(record=rec, **x)
-        if rec.appointment:
-            Appointment.objects.filter(pk=rec.appointment_id).update(status=Appointment.Status.COMPLETED)
         return rec
 
 
@@ -95,7 +112,33 @@ class RecordViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):
-        return self.scope(MedicalRecord.objects.prefetch_related("diagnoses", "prescriptions").order_by("-created_at"))
+        return self.scope(MedicalRecord.objects.select_related("doctor__user", "appointment", "follow_up_appointment")
+                          .prefetch_related("diagnoses__icd10_code", "prescriptions").order_by("-created_at"))
+
+    def get_permissions(self):
+        if self.action == "chart":
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=["get"])
+    def chart(self, request):
+        if request.user.role == "patient":
+            patient = get_object_or_404(Patient, user=request.user)
+        elif request.user.role in ("admin", "clinical"):
+            patient = get_object_or_404(Patient, pk=request.query_params.get("patient"))
+        else:
+            raise PermissionDenied()
+
+        visits = self.get_queryset().filter(patient=patient)
+        plans = patient.plans.order_by("-start_date", "-pk")
+        orders = patient.orders.prefetch_related("results").order_by("-ordered_at", "-pk")
+        return Response({
+            "viewer": request.user.pk, "patient": patient.pk, "mrn": patient.mrn,
+            "name": patient.user.get_full_name() or patient.user.username,
+            "visits": self.get_serializer(visits, many=True).data,
+            "plans": PlanSerializer(plans, many=True).data,
+            "orders": OrderSerializer(orders, many=True).data,
+        })
 
     @action(detail=True, methods=["post"])
     def invoice(self, request, pk=None):
@@ -165,3 +208,35 @@ class OrderViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
         order.status = ClinicalOrder.Status.COMPLETED
         order.save(update_fields=["status"])
         return Response(OrderSerializer(order).data)
+
+
+class FollowUpBookingView(AppointmentViewSet):
+    """Run the Appointments create flow and link its result in the same transaction."""
+
+    @extend_schema(request=inline_serializer("FollowUpSlot", fields={
+        "start_time": serializers.DateTimeField(), "end_time": serializers.DateTimeField(),
+    }), responses={201: AppointmentSerializer})
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        if request.user.role != "patient":
+            raise PermissionDenied("Only the patient can book this follow-up.")
+        self.visit = get_object_or_404(MedicalRecord.objects.select_for_update(),
+                                       pk=kwargs["pk"], patient__user=request.user)
+        booking = self.visit.follow_up_appointment
+        if not self.visit.follow_up_recommendation:
+            raise serializers.ValidationError({"detail": "This visit has no follow-up recommendation."})
+        if booking and booking.status != Appointment.Status.CANCELLED:
+            raise serializers.ValidationError({"detail": "This follow-up is already in Appointments."})
+        return super().create(request, *args, **kwargs)
+
+    def get_serializer(self, *args, **kwargs):
+        if "data" in kwargs:
+            slot = kwargs["data"]
+            kwargs["data"] = {"start_time": slot.get("start_time"), "end_time": slot.get("end_time"),
+                              "doctor": self.visit.doctor_id, "reason": "Follow-up visit"}
+        return super().get_serializer(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        self.visit.follow_up_appointment = serializer.instance
+        self.visit.save(update_fields=["follow_up_appointment"])

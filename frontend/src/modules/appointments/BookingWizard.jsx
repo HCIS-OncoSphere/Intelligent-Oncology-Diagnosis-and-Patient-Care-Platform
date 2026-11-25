@@ -127,13 +127,13 @@ function TimeStep({ doctor, firstFree, onPick, reload }) {
   );
 }
 
-export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, moving, onDone, onStopMoving }) {
+export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, moving, followUp, onDone, onStopMoving, onStopFollowUp }) {
   const admin = me.role === "admin";
-  const steps = moving ? ["Time"] : admin ? ["Patient", "Reason", "Doctor", "Time"] : ["Reason", "Doctor", "Time"];
+  const steps = moving || followUp ? ["Time"] : admin ? ["Patient", "Reason", "Doctor", "Time"] : ["Reason", "Doctor", "Time"];
   const [at, setAt] = useState(0);
   const [patient, setPatient] = useState(null), [search, setSearch] = useState("");
-  const [reason, setReason] = useState(""), [other, setOther] = useState("");
-  const [doctorId, setDoctorId] = useState(moving ? String(moving.doctor) : "");
+  const [reason, setReason] = useState(followUp ? "Follow-up visit" : ""), [other, setOther] = useState("");
+  const [doctorId, setDoctorId] = useState(String(moving?.doctor ?? followUp?.doctor ?? ""));
   const [picked, setPicked] = useState(null), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [reload, setReload] = useState(0);
 
   const step = steps[at];
@@ -152,14 +152,16 @@ export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, mo
   const confirm = () => {
     const slot = { start_time: picked.start_time, end_time: picked.end_time };
     setBusy(true); setErr("");
-    const req = moving
-      ? api(`/appointments/${moving.id}/reschedule/`, { method: "POST", body: slot })
-      : api("/appointments/", { method: "POST", body: { doctor: doctor.id, ...slot, reason: reasonText, ...(admin ? { patient: patient.id } : {}) } });
+    const path = moving ? `/appointments/${moving.id}/reschedule/`
+      : followUp ? `/records/${followUp.id}/book-follow-up/` : "/appointments/";
+    const body = moving || followUp ? slot
+      : { doctor: doctor.id, ...slot, reason: reasonText, ...(admin ? { patient: patient.id } : {}) };
+    const req = api(path, { method: "POST", body });
     req.then((a) => {
       setPicked(null);
       const bill = a?.bill?.status === "pending" ? ` Invoice ${a.bill.number} (${price(a.bill.total)}) is ready: pay online or at the reception desk.` : "";
       onDone(moving ? `Moved to ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)}.` : `Booked ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)} with ${doctor.name}.${bill}`);
-      if (!moving) reset();
+      if (!moving && !followUp) reset();
     }).catch((e) => { setPicked(null); setErr(errorText(e)); setReload((n) => n + 1); }).finally(() => setBusy(false));
   };
 
@@ -176,6 +178,13 @@ export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, mo
             <span>Now {when(moving)}</span>
             <span>{moving.doctor_name}</span>
             <button type="button" onClick={onStopMoving}>Keep the current time</button>
+          </div>
+        ) : followUp ? (
+          <div className="ap-moving">
+            <small>Follow-up visit</small>
+            <b>{doctor?.name}</b>
+            <span>{followUp.follow_up_recommendation}</span>
+            <button type="button" onClick={onStopFollowUp}>Back to records</button>
           </div>
         ) : (
           <>

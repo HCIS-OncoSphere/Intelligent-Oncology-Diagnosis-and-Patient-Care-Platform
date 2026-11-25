@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db import models
 
 
@@ -7,6 +6,11 @@ class MedicalRecord(models.Model):
     doctor = models.ForeignKey("appointments.Doctor", on_delete=models.PROTECT)
     appointment = models.ForeignKey("appointments.Appointment", null=True, blank=True, on_delete=models.SET_NULL)
     notes = models.TextField(blank=True)
+    follow_up_recommendation = models.CharField(max_length=500, blank=True)
+    follow_up_appointment = models.ForeignKey(
+        "appointments.Appointment", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="follow_up_records",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
 

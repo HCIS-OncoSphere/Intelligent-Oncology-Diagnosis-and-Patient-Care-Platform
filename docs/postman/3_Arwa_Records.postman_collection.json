@@ -413,7 +413,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"notes\": \"Consultation. CT requested.\",\n  \"diagnoses_in\": [\n    {\n      \"icd10_code\": \"C25.9\",\n      \"is_primary\": true\n    }\n  ],\n  \"prescriptions_in\": [\n    {\n      \"medication\": \"Ondansetron\",\n      \"dosage\": \"8 mg\",\n      \"frequency\": \"twice daily\",\n      \"duration\": \"7 days\",\n      \"instructions\": \"After meals\"\n    }\n  ]\n}",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"notes\": \"Consultation. CT requested.\",\n  \"diagnoses_in\": [\n    {\n      \"icd10_code\": \"C25.9\",\n      \"is_primary\": true\n    }\n  ],\n  \"prescriptions_in\": [\n    {\n      \"medication\": \"Ondansetron\",\n      \"dosage\": \"8 mg\",\n      \"frequency\": \"twice daily\",\n      \"duration\": \"7 days\",\n      \"instructions\": \"After meals\"\n    }\n  ],\n  \"follow_up_recommendation\": \"Follow up in two weeks.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -718,6 +718,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('Patient sees the recommendation before booking', () => {",
+                  "  const record = pm.response.json();",
+                  "  pm.expect(record.follow_up_recommendation).to.equal('Follow up in two weeks.');",
+                  "  pm.expect(record.follow_up_appointment).to.equal(null);",
+                  "});",
                   ""
                 ]
               }
