@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { Badge, Msg, Table, errorText, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
+import { ConfirmDialog } from "../../shared/ConfirmDialog.jsx";
 import { DoctorRequests } from "./DoctorRequests.jsx";
 import { StaffAccounts } from "./StaffAccounts.jsx";
 
@@ -28,6 +29,7 @@ function SettingsTab() {
   const [form, setForm] = useState({ key: "", value: "", description: "" });
   const [msg, setMsg] = useState({});
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null); // the setting object pending deletion
 
   const setField = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -74,7 +76,6 @@ function SettingsTab() {
   };
 
   const deleteSetting = async (s) => {
-    if (!window.confirm(`Are you sure you want to delete setting "${s.key}"?`)) return;
     setMsg({});
     try {
       await api(`/settings/${s.id}/`, { method: "DELETE" });
@@ -83,6 +84,8 @@ function SettingsTab() {
       reloadSettings();
     } catch (err) {
       setMsg({ text: errorText(err) });
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -150,13 +153,24 @@ function SettingsTab() {
               <button className="sm" onClick={() => startEdit(s)}>
                 Edit
               </button>
-              <button className="sm danger" onClick={() => deleteSetting(s)}>
+              <button className="sm danger" onClick={() => setConfirmDelete(s)}>
                 Delete
               </button>
             </td>
           </tr>
         ))}
       />
+      {confirmDelete && (
+        <ConfirmDialog
+          icon="trash"
+          tone="danger"
+          title="Delete setting?"
+          message={`"${confirmDelete.key}" will be permanently removed.`}
+          confirmLabel="Yes, delete"
+          onConfirm={() => deleteSetting(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </>
   );
 }
