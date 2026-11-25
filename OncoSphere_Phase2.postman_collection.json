@@ -2774,7 +2774,61 @@
           ]
         },
         {
-          "name": "Create invoice directly (doctor)",
+          "name": "Create invoice directly (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/invoices/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "invoices",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{onco_patient_id}}\",\n  \"items_in\": [\n    {\n      \"service\": \"{{onco_service_id}}\",\n      \"quantity\": 1,\n      \"icd10_code\": \"C25.9\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Doctor cannot create invoice -> 403",
           "request": {
             "method": "POST",
             "header": [
@@ -2820,7 +2874,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "pm.test('Status is 403', function () { pm.expect([403]).to.include(pm.response.code); });",
                   ""
                 ]
               }
