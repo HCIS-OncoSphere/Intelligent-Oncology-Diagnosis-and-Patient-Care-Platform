@@ -17,7 +17,9 @@ export default function Login({ onDone }) {
     try {
       onDone(await login(cred.username.trim(), cred.password));
     } catch (err) {
-      setError(requestProblem(err) || "That username or email and password don't match an active account.");
+      // a doctor waiting for approval (or rejected) gets the server's own explanation
+      const known = /registration/i.test(err?.data?.detail || "") ? err.data.detail : "";
+      setError(requestProblem(err) || known || "That username or email and password don't match an active account.");
       setCred((c) => ({ ...c, password: "" }));
     } finally {
       setBusy(false);
@@ -43,7 +45,8 @@ export default function Login({ onDone }) {
 
       <div className="auth-divider"><span>New to OncoSphere?</span></div>
       <Link to="/register" className="auth-secondary">Create a patient account</Link>
-      <p className="auth-fine">Doctors, nurses and staff: your account is set up by an administrator.</p>
+      <Link to="/register/doctor" className="auth-secondary">Register as a doctor</Link>
+      <p className="auth-fine">Doctor registrations are reviewed by an administrator. Finance staff accounts are created by an administrator.</p>
     </AuthLayout>
   );
 }

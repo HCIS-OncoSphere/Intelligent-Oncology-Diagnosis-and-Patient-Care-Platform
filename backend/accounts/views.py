@@ -2,7 +2,10 @@ from rest_framework import generics, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+from .models import Notification, User
 from .permissions import IsAdminRole
 from .serializers import RegisterSerializer, UserSerializer
 
@@ -11,6 +14,7 @@ class RegisterView(generics.CreateAPIView):
     """Public patient self-registration (F2). Staff/admin accounts are created by an admin."""
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
+    throttle_scope = "register"
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -67,3 +71,44 @@ class UserViewSet(viewsets.ModelViewSet):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("Admins cannot deactivate their own account.")
         serializer.save()
+
+
+class ChangePasswordView(APIView):
+    """Signed-in user changes their own password (also clears the "must change" flag of a temporary one)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        current = request.data.get("current_password") or ""
+        new = request.data.get("new_password") or ""
+        user = request.user
+        if not user.check_password(current):
+            return Response({"current_password": ["Current password is wrong."]}, status=400)
+        if new == current:
+            return Response({"new_password": ["Choose a password different from the current one."]}, status=400)
+        try:
+            validate_password(new, user=user)
+        except DjangoValidationError as e:
+            return Response({"new_password": list(e.messages)}, status=400)
+        user.set_password(new)
+        user.must_change_password = False
+        user.save(update_fields=["password", "must_change_password"])
+        return Response({"detail": "Password changed."})
+
+
+class NotificationView(APIView):
+    """GET: your latest notifications and the unread count. POST {"ids": [..]} (or no ids): mark as read."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = Notification.objects.filter(user=request.user)
+        items = [{"id": n.id, "title": n.title, "message": n.message, "link": n.link, "is_read": n.is_read,
+                  "created_at": n.created_at} for n in qs[:30]]
+        return Response({"unread": qs.filter(is_read=False).count(), "results": items})
+
+    def post(self, request):
+        qs = Notification.objects.filter(user=request.user, is_read=False)
+        ids = request.data.get("ids")
+        if isinstance(ids, list):
+            qs = qs.filter(id__in=[i for i in ids if isinstance(i, int)])
+        qs.update(is_read=True)
+        return Response({"detail": "ok"})

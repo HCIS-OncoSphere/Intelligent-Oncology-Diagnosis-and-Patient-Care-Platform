@@ -5,6 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User
@@ -21,7 +22,25 @@ class LoginSerializer(TokenObtainPairSerializer):
             if match:
                 ident = match.username
         attrs[self.username_field] = ident
+        self._explain_switched_off_doctor(ident, attrs.get("password") or "")
         return super().validate(attrs)
+
+    @staticmethod
+    def _explain_switched_off_doctor(username, password):
+        """A doctor whose request is waiting or was rejected gets a clear message instead of the generic
+        "no active account". Only shown once the password is right, so it reveals nothing to strangers."""
+        user = User.objects.filter(username__iexact=username, is_active=False).first()
+        if user is None or not user.check_password(password):
+            return
+        app = user.doctor_applications.first()
+        if app is None:
+            return
+        if app.status == "pending":
+            raise AuthenticationFailed("Your doctor registration is waiting for admin approval.", code="doctor_pending")
+        if app.status == "rejected":
+            raise AuthenticationFailed(
+                f"Your doctor registration was not approved. Reason: {app.rejection_reason} "
+                "You can register again with corrected details.", code="doctor_rejected")
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -33,10 +52,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "first_name", "last_name",
-            "role", "phone", "is_active", "password", "specialty", "license_no", "avatar"
+            "role", "phone", "is_active", "password", "specialty", "license_no", "avatar",
+            "must_change_password",
         ]
         # the photo is changed through /api/profile/photo/, never here
-        read_only_fields = ["avatar"]
+        read_only_fields = ["avatar", "must_change_password"]
         # is_active and role may only be changed by admins (enforced in views).
         # Marking them here as extra_kwargs to signal intent; object-level
         # enforcement is done in UserViewSet / MeView.patch().
@@ -105,6 +125,18 @@ class RegisterSerializer(serializers.Serializer):
     date_of_birth = serializers.DateField(required=True)
     gender = serializers.ChoiceField(choices=GENDERS, required=False, default="O")
     phone = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    address = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    blood_type = serializers.ChoiceField(
+        choices=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], required=False, allow_blank=True)
+    emergency_contact = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    emergency_contact_phone = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    national_id = serializers.CharField(required=False, allow_blank=True, max_length=14)
+
+    def validate_national_id(self, v):
+        v = v.strip()
+        if v and not (v.isascii() and v.isdigit() and len(v) == 14):
+            raise serializers.ValidationError("National ID must be exactly 14 digits.")
+        return v
 
     def validate_email(self, v):
         v = v.strip().lower()
@@ -157,6 +189,11 @@ class RegisterSerializer(serializers.Serializer):
                 date_of_birth=d["date_of_birth"],
                 gender=d.get("gender", "O"),
                 phone=d.get("phone", ""),
+                address=d.get("address", ""),
+                blood_type=d.get("blood_type", ""),
+                emergency_contact=d.get("emergency_contact", ""),
+                emergency_contact_phone=d.get("emergency_contact_phone", ""),
+                national_id=d.get("national_id", ""),
             )
         except (ImportError, LookupError):
             pass

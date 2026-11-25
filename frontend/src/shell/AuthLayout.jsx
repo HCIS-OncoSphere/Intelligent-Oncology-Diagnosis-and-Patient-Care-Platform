@@ -101,6 +101,35 @@ export function AuthField({ label, icon, error, hint, trailing, className = "", 
   );
 }
 
+/** Drop-down with the same look as AuthField. options: [[value, label], ...] */
+export function AuthSelect({ label, error, hint, options, placeholder = "Choose…", className = "", ...input }) {
+  const id = useId();
+  return (
+    <div className={`auth-field ${error ? "has-error" : ""} ${className}`}>
+      <label htmlFor={id}>{label}</label>
+      <div className="auth-input">
+        <select id={id} aria-invalid={!!error} {...input}>
+          <option value="">{placeholder}</option>
+          {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+      {error ? <p className="auth-error"><Icon name="alert" /> {error}</p> : hint ? <p className="auth-hint">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Multi-line text with the same look as AuthField. */
+export function AuthTextArea({ label, error, hint, className = "", ...input }) {
+  const id = useId();
+  return (
+    <div className={`auth-field ${error ? "has-error" : ""} ${className}`}>
+      <label htmlFor={id}>{label}</label>
+      <div className="auth-input"><textarea id={id} aria-invalid={!!error} {...input} /></div>
+      {error ? <p className="auth-error"><Icon name="alert" /> {error}</p> : hint ? <p className="auth-hint">{hint}</p> : null}
+    </div>
+  );
+}
+
 /** Password input with show/hide and a Caps Lock warning. */
 export function PasswordField(props) {
   const [show, setShow] = useState(false);

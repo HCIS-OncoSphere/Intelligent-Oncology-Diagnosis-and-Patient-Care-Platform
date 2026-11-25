@@ -178,6 +178,23 @@ When the backend server is running, you can explore and test the endpoints direc
 - **`PATCH /api/patients/{id}/`**: Update contact/demographics (protected from unauthorized tampering)
 - **`GET /api/users/`**: User management (Admin only)
 
+#### Registration, roles and approval
+
+Roles: `admin` (accounts, doctor requests, settings, audit), `clinical` (doctors), `patient` and `finance`
+(financial staff: invoices, payments and the price list only; they see patients' name and MRN, nothing medical).
+Admins can still use billing as a back-up; to make it finance-only, change `IsBillingStaff` in `accounts/permissions.py`.
+
+- **`POST /api/auth/register/`**: patient sign-up. Besides name, date of birth, email and password it takes `phone`, `address`, `blood_type`, `national_id` (14 digits, optional), `emergency_contact` and `emergency_contact_phone`
+- **`POST /api/auth/register/doctor/`** (multipart): a doctor asks for an account with specialty, licence number, experience, education, languages, focus areas and a licence file (PDF/JPG/PNG, 5 MB). The account stays switched off until an admin approves it. A rejected doctor can apply again with the same email
+- **`GET /api/admin/doctor-requests/`** (`?status=pending|approved|rejected`), **`POST .../{id}/approve/`**, **`POST .../{id}/reject/`** (body `{"reason": "..."}`), **`GET .../{id}/license/`**: the admin's review queue
+- **`POST /api/admin/doctors/`** and **`POST /api/admin/finance/`**: an admin creates a doctor or finance account directly. The reply holds a one-time `temporary_password`, and the person must change it at first sign-in (`must_change_password` in `/api/auth/me/`)
+- **`POST /api/auth/change-password/`**, **`GET, POST /api/notifications/`** (list / mark as read)
+
+E-mail: with no `EMAIL_HOST` in `backend/.env`, messages are printed in the server console. To send real
+mail, set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` (see `.env.example`).
+Public sign-up pages are limited to `REGISTER_RATE` (default 60/hour per IP). Run `python manage.py migrate`
+after pulling this change. Demo finance user: `finance1` / `Finance12345` (`python manage.py seed`).
+
 #### Appointments (F3) and reports (F7)
 
 Demo data for this slice: `python manage.py seed_appointments` (admin / dr.salma with Mon-Fri 09:00-17:00 / patient1).

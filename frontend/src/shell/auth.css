@@ -42,12 +42,18 @@
 .auth-field > label, .auth-label { font-size: .84rem; font-weight: 600; color: var(--text); margin: 0; display: block; }
 .auth-input { position: relative; display: flex; align-items: center; }
 .auth-input > .icon { position: absolute; left: 13px; width: 18px; height: 18px; color: var(--muted); pointer-events: none; transition: color .15s; }
-.auth-input input {
+.auth-input input, .auth-input select, .auth-input textarea {
   width: 100%; min-height: 44px; padding: 10px 14px; border-radius: 10px;
   background: var(--bg); border: 1px solid var(--border); font-size: .95rem;
   transition: border-color .15s, box-shadow .15s, background .15s;
 }
 .auth-input > .icon ~ input { padding-left: 40px; }
+.auth-input textarea { min-height: 84px; resize: vertical; font-family: inherit; }
+.auth-input input:focus, .auth-input select:focus, .auth-input textarea:focus { background: var(--surface); }
+.auth-field.has-error .auth-input select, .auth-field.has-error .auth-input textarea { border-color: var(--danger); }
+.auth-file { font-size: .85rem; }
+.auth-done { text-align: center; display: grid; gap: 12px; padding: 12px 0; }
+.auth-done h2 { margin: 0; }
 .auth-input:has(.auth-reveal) input { padding-right: 46px; }
 .auth-input input:hover { border-color: var(--muted); }
 .auth-input input:focus { background: var(--surface); }

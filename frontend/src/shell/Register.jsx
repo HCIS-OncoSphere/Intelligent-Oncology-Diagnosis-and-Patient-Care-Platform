@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { login, register } from "../api.js";
-import { Alert, AuthField, AuthLayout, Icon, PasswordField, SubmitButton, requestProblem } from "./AuthLayout.jsx";
+import { Alert, AuthField, AuthLayout, AuthSelect, Icon, PasswordField, SubmitButton, requestProblem } from "./AuthLayout.jsx";
 
 const EMPTY = {
   first_name: "", last_name: "", date_of_birth: "", gender: "",
-  email: "", phone: "", password: "", confirm: "",
+  email: "", phone: "", address: "", blood_type: "", national_id: "",
+  emergency_contact: "", emergency_contact_phone: "", password: "", confirm: "",
 };
+const BLOOD = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((b) => [b, b]);
 // English-letter email (names can be Arabic; the email can't).
 const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const GENDERS = [["F", "Female"], ["M", "Male"], ["O", "Other"]];
@@ -39,6 +41,11 @@ function check(f) {
   need("date_of_birth", "Enter your date of birth.");
   need("gender", "Choose one.");
   need("email", "Enter your email address.");
+  need("phone", "Enter a phone number we can reach you on.");
+  need("address", "Enter your address.");
+  need("emergency_contact", "Enter the name of someone we can call in an emergency.");
+  need("emergency_contact_phone", "Enter their phone number.");
+  if (f.national_id.trim() && !/^\d{14}$/.test(f.national_id.trim())) e.national_id = "National ID is 14 digits.";
   if (f.date_of_birth && f.date_of_birth > today()) e.date_of_birth = "Date of birth can't be in the future.";
   if (f.email.trim() && !EMAIL.test(f.email.trim())) {
     e.email = /[^\x00-\x7F]/.test(f.email)
@@ -86,6 +93,7 @@ export default function Register({ onDone }) {
     body.email = body.email.trim();
     body.first_name = body.first_name.trim();
     body.last_name = body.last_name.trim();
+    for (const k of ["phone", "address", "national_id", "emergency_contact", "emergency_contact_phone"]) body[k] = body[k].trim();
     try {
       await register(body);
     } catch (ex) {
@@ -153,8 +161,26 @@ export default function Register({ onDone }) {
                        autoComplete="email" autoCapitalize="none" spellCheck={false} error={err("email")}
                        placeholder="name@example.com" dir="ltr"
                        hint="You'll sign in with this email. English letters only." />
-            <AuthField label="Phone (optional)" type="tel" icon="phone" value={f.phone} onChange={set("phone")}
+            <AuthField label="Phone" type="tel" icon="phone" value={f.phone} onChange={set("phone")}
                        autoComplete="tel" error={err("phone")} placeholder="01X XXXX XXXX" />
+          </div>
+          <AuthField label="Address" value={f.address} onChange={set("address")} autoComplete="street-address"
+                     dir="auto" error={err("address")} placeholder="Street, area, city" />
+        </section>
+
+        <section className="auth-section" aria-labelledby="sec-health">
+          <h3 className="auth-section-title" id="sec-health">Health and emergency contact</h3>
+          <div className="auth-row">
+            <AuthSelect label="Blood type (optional)" value={f.blood_type} onChange={set("blood_type")}
+                        options={BLOOD} placeholder="Don't know" error={err("blood_type")} />
+            <AuthField label="National ID (optional)" inputMode="numeric" maxLength={14} value={f.national_id}
+                       onChange={set("national_id")} error={err("national_id")} placeholder="14 digits" dir="ltr" />
+          </div>
+          <div className="auth-row">
+            <AuthField label="Emergency contact" value={f.emergency_contact} onChange={set("emergency_contact")}
+                       dir="auto" error={err("emergency_contact")} placeholder="Name and relation, e.g. Ali (husband)" />
+            <AuthField label="Their phone" type="tel" icon="phone" value={f.emergency_contact_phone}
+                       onChange={set("emergency_contact_phone")} error={err("emergency_contact_phone")} />
           </div>
         </section>
 

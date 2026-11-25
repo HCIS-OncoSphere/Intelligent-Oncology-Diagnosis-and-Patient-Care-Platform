@@ -107,6 +107,17 @@ export function register(fields) {
   return api("/auth/register/", { method: "POST", body: fields });
 }
 
+/** Doctor self-registration (multipart: it carries the licence file). The account waits for admin approval. */
+export function registerDoctor(formData) {
+  clearTokens();
+  return api("/auth/register/doctor/", { method: "POST", body: formData });
+}
+
+/** Change your own password; also used for the first sign-in with a temporary one. */
+export function changePassword(current_password, new_password) {
+  return api("/auth/change-password/", { method: "POST", body: { current_password, new_password } });
+}
+
 export function logout() {
   clearTokens();
 }

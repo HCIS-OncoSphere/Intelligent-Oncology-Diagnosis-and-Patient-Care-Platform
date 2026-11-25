@@ -2,7 +2,7 @@
   "info": {
     "name": "OncoSphere Phase 2 API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Run folder 0 first (stores tokens), then run the folders in order, or use the Collection Runner on the whole collection. Seed users: admin/dr.salma/patient1."
+    "description": "Run folder 0 first (stores tokens), then run the folders in order, or use the Collection Runner on the whole collection. Seed users: admin/dr.salma/patient1/finance1."
   },
   "item": [
     {
@@ -279,6 +279,55 @@
                 "exec": [
                   "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
                   "pm.test('doctor profile exists. If this fails run: python manage.py seed', ()=>{ const j = pm.response.json(); pm.expect(Array.isArray(j) && j.length > 0).to.eql(true); });try { const j = pm.response.json(); pm.collectionVariables.set('onco_doctor_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login finance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{finance_user}}\",\n  \"password\": \"{{finance_pass}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); pm.collectionVariables.set('onco_finance_token', String(j.access)); } catch (e) {}",
                   ""
                 ]
               }
@@ -4289,6 +4338,666 @@
           ]
         }
       ]
+    },
+    {
+      "name": "14 - Doctor registration, staff and finance",
+      "item": [
+        {
+          "name": "Doctor self-registration (attach a licence file)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/doctor/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "doctor",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "first_name",
+                  "value": "Hala",
+                  "type": "text"
+                },
+                {
+                  "key": "last_name",
+                  "value": "Said",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "hala.postman@onco.test",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "01011112222",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Tumor-Board-2026",
+                  "type": "text"
+                },
+                {
+                  "key": "specialty",
+                  "value": "Medical oncology",
+                  "type": "text"
+                },
+                {
+                  "key": "license_no",
+                  "value": "EG-POSTMAN-001",
+                  "type": "text"
+                },
+                {
+                  "key": "years_experience",
+                  "value": "8",
+                  "type": "text"
+                },
+                {
+                  "key": "education",
+                  "value": "Cairo University",
+                  "type": "text"
+                },
+                {
+                  "key": "languages",
+                  "value": "Arabic, English",
+                  "type": "text"
+                },
+                {
+                  "key": "focus_areas",
+                  "value": "Breast cancer",
+                  "type": "text"
+                },
+                {
+                  "key": "license_document",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201/400', function () { pm.expect([201,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try to sign in while waiting (expect 401 + message)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"hala.postman@onco.test\",\n  \"password\": \"Tumor-Board-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.expect([401]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: list doctor requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/doctor-requests/?status=pending",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "doctor-requests",
+                "?status=pending"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); if (j.length) pm.collectionVariables.set('doctor_request_id', String(j[0].id)); } catch (e) {}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: approve a doctor request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/doctor-requests/{{doctor_request_id}}/approve/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "doctor-requests",
+                "{{doctor_request_id}}",
+                "approve",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200/400', function () { pm.expect([200,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: reject a doctor request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/doctor-requests/{{doctor_request_id}}/reject/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "doctor-requests",
+                "{{doctor_request_id}}",
+                "reject",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"The licence photo is not readable.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200/400', function () { pm.expect([200,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: create a doctor directly",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/doctors/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "doctors",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "first_name",
+                  "value": "Hala",
+                  "type": "text"
+                },
+                {
+                  "key": "last_name",
+                  "value": "Said",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "dr.direct@onco.test",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "01011112222",
+                  "type": "text"
+                },
+                {
+                  "key": "specialty",
+                  "value": "Medical oncology",
+                  "type": "text"
+                },
+                {
+                  "key": "years_experience",
+                  "value": "8",
+                  "type": "text"
+                },
+                {
+                  "key": "license_no",
+                  "value": "EG-DIRECT-001",
+                  "type": "text"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201/400', function () { pm.expect([201,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: create finance staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/finance/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "finance",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Nour\",\n  \"last_name\": \"Adel\",\n  \"email\": \"nour.finance@onco.test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201/400', function () { pm.expect([201,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"Finance12345\",\n  \"new_password\": \"Finance-New-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_finance_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200/400', function () { pm.expect([200,400]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark notifications as read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finance: price list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_finance_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finance: patients (name and MRN only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{onco_finance_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -4319,6 +5028,14 @@
     {
       "key": "patient_pass",
       "value": "Patient12345"
+    },
+    {
+      "key": "finance_user",
+      "value": "finance1"
+    },
+    {
+      "key": "finance_pass",
+      "value": "Finance12345"
     }
   ]
 }

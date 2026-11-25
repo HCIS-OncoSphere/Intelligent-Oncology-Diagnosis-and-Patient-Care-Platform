@@ -9,7 +9,10 @@ import { ThemeToggle } from "./shared/ThemeToggle.jsx";
 import { Logo } from "./shared/ui.jsx";
 import Home from "./shell/Home.jsx";
 import Login from "./shell/Login.jsx";
+import DoctorRegister from "./shell/DoctorRegister.jsx";
+import ForcePassword from "./shell/ForcePassword.jsx";
 import Register from "./shell/Register.jsx";
+import { Bell } from "./shared/Bell.jsx";
 
 // Each module default-exports { id, label, order, roles, Component }.
 // Optional: nav: false (no tab; reached by link), hero: false (no title banner),
@@ -17,7 +20,7 @@ import Register from "./shell/Register.jsx";
 const found = import.meta.glob("./modules/*/index.jsx", { eager: true });
 const modules = Object.values(found).map((m) => m.default).sort((a, b) => a.order - b.order);
 
-const ROLE = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient" };
+const ROLE = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient", finance: "Financial staff" };
 
 // One line under each page title in the banner. A module can set its own with a `description` field.
 const DESCRIPTIONS = {
@@ -72,9 +75,13 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register onDone={setMe} />} />
+      <Route path="/register/doctor" element={<DoctorRegister />} />
       <Route path="*" element={<Login onDone={setMe} />} />
     </Routes>
   );
+
+  // an account an admin created starts with a temporary password: choose your own before anything else
+  if (me.must_change_password) return <ForcePassword onDone={setMe} onSignOut={() => setMe(null)} />;
 
   const visible = modules.filter((m) => m.roles.includes(me.role));
   const tabs = visible.filter((m) => m.nav !== false);
@@ -99,6 +106,7 @@ export default function App() {
         <div className="topbar-in">
           <div className="brand"><Logo /> OncoSphere</div>
           <div className="spacer" />
+          <Bell />
           <ThemeToggle />
           <div className="user-chip">
             {hasProfile

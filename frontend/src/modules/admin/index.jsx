@@ -1,8 +1,10 @@
 // Administration module (owner: Aya). Feature F8 (Settings, Audit Log).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { Badge, Msg, Table, errorText, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
+import { DoctorRequests } from "./DoctorRequests.jsx";
+import { StaffAccounts } from "./StaffAccounts.jsx";
 
 const RefreshIcon = () => (
   <svg
@@ -258,11 +260,20 @@ function AuditTab() {
 }
 
 function Admin() {
-  const [tab, setTab] = useQueryState("tab", "settings");
+  const [tab, setTab] = useQueryState("tab", "requests");
+  const [pending, setPending] = useState(0);
+  const countPending = () => api("/admin/doctor-requests/?status=pending").then((r) => setPending(r.length)).catch(() => {});
+  useEffect(() => { countPending(); }, []);
 
   return (
     <>
       <div className="segmented">
+        <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}>
+          Doctor requests{pending > 0 && <span className="tab-count">{pending}</span>}
+        </button>
+        <button className={tab === "staff" ? "active" : ""} onClick={() => setTab("staff")}>
+          Add staff
+        </button>
         <button
           className={tab === "settings" ? "active" : ""}
           onClick={() => setTab("settings")}
@@ -277,7 +288,9 @@ function Admin() {
         </button>
       </div>
 
-      {tab === "audit" ? <AuditTab /> : <SettingsTab />}
+      {tab === "requests" ? <DoctorRequests onChanged={countPending} />
+        : tab === "staff" ? <StaffAccounts />
+        : tab === "audit" ? <AuditTab /> : <SettingsTab />}
     </>
   );
 }

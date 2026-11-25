@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.permissions import IsAdminRole, IsStaffRole
+from accounts.permissions import IsBillingReader, IsBillingStaff
 
 from .models import ICD10Code, Invoice, InvoiceItem, Payment, Service
 
@@ -51,11 +51,11 @@ class ServiceSerializer(serializers.ModelSerializer):
 class ICD10ViewSet(viewsets.ModelViewSet):
     queryset = ICD10Code.objects.all()
     serializer_class = ICD10Serializer
-    permission_classes = [IsStaffRole]
+    permission_classes = [IsBillingReader]
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    """The price list. Staff read it; only admins change it. A service is switched off with is_active=false
+    """The price list. Staff read it; only billing staff (finance, admins) change it. A service is switched off with is_active=false
     (never deleted: invoices keep pointing at it). The list shows active services; admins add ?all=1 to see
     the switched-off ones too, and can always open one by id to switch it back on."""
     serializer_class = ServiceSerializer
@@ -63,15 +63,15 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):
-            return [IsStaffRole()]
+            return [IsBillingReader()]
         if self.action == "visit_prices":
             return [IsAuthenticated()]
-        return [IsAdminRole()]
+        return [IsBillingStaff()]
 
     def get_queryset(self):
         qs = Service.objects.all().order_by("id")
         u = self.request.user
-        is_admin = u.is_authenticated and u.role == "admin"
+        is_admin = u.is_authenticated and u.role in ("admin", "finance")
         wants_all = self.request.query_params.get("all") in ("1", "true")
         if is_admin and (self.action != "list" or wants_all):
             return qs
@@ -180,7 +180,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [IsAdminRole()]  # invoices are raised by the reception desk (admins); doctors only read them
+            return [IsBillingStaff()]  # raised by finance staff (admins as back-up); doctors only read them
         return super().get_permissions()
 
     def get_queryset(self):
@@ -192,11 +192,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             if not appt.isdigit():
                 raise serializers.ValidationError({"appointment": ["Must be a whole number."]})
             qs = qs.filter(appointment_id=int(appt))
-        return qs if u.role in ("admin", "clinical") else qs.filter(patient__user=u)
+        return qs if u.role in ("admin", "clinical", "finance") else qs.filter(patient__user=u)
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def pay(self, request, pk=None):
+        if request.user.role == "clinical":
+            return Response({"detail": "Doctors do not handle payments."}, status=403)
         inv = self.get_object()  # scoped: patients only reach their own invoices
         # lock the row so two simultaneous payments cannot both pass the overpayment check
         inv = Invoice.objects.select_for_update().get(pk=inv.pk)

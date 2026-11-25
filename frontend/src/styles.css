@@ -297,3 +297,23 @@ button.icon-btn:disabled { opacity: 1; cursor: progress; }
   .user-chip .who { display: none; }
   th, td { padding: 9px 10px; }
 }
+
+/* notification bell (shared/Bell.jsx) */
+.bell { position: relative; }
+.bell .icon-btn { position: relative; }
+.bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: .7rem; font-weight: 700; display: grid; place-items: center; }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 8px); width: min(340px, 92vw); max-height: 420px; overflow: auto; z-index: 50; display: grid; gap: 4px; padding: 8px; }
+.bell-item { display: grid; gap: 2px; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; margin: 0; min-height: 0; }
+.bell-item:hover { background: var(--surface-2); }
+.bell-item.new { background: var(--primary-soft); }
+.bell-item span { color: var(--muted); font-size: .85rem; font-weight: 400; }
+.bell-item small { color: var(--muted); }
+
+/* admin: doctor requests and new staff */
+.rq-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 18px; margin: 8px 0; font-size: .9rem; }
+.rq-detail dt { color: var(--muted); font-size: .78rem; }
+.rq-detail dd { margin: 0 0 6px; }
+.rq-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.tab-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--danger); color: #fff; font-size: .7rem; font-weight: 700; }
+.secret-box { border: 1px dashed var(--primary); border-radius: 10px; padding: 12px 14px; background: var(--primary-soft); margin-top: 10px; }
+.secret-box code { font-size: 1.1rem; user-select: all; }

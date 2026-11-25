@@ -4,13 +4,20 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .profile import ProfilePhotoView, ProfileView
 from .serializers import LoginSerializer
-from .views import MeView, RegisterView, UserViewSet
+from .doctors import AdminDoctorCreateView, AdminFinanceCreateView, DoctorRegisterView, DoctorRequestViewSet
+from .views import ChangePasswordView, MeView, NotificationView, RegisterView, UserViewSet
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
+router.register("admin/doctor-requests", DoctorRequestViewSet, basename="doctor-request")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),
+    path("auth/register/doctor/", DoctorRegisterView.as_view(), name="register-doctor"),
+    path("auth/change-password/", ChangePasswordView.as_view(), name="change-password"),
+    path("notifications/", NotificationView.as_view(), name="notifications"),
+    path("admin/doctors/", AdminDoctorCreateView.as_view(), name="admin-doctor-create"),
+    path("admin/finance/", AdminFinanceCreateView.as_view(), name="admin-finance-create"),
     path("auth/login/", TokenObtainPairView.as_view(serializer_class=LoginSerializer), name="token_obtain_pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/me/", MeView.as_view(), name="me"),

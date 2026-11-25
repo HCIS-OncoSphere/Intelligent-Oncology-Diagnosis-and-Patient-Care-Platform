@@ -25,7 +25,9 @@ class Patient(models.Model):
     blood_type = models.CharField(max_length=3, blank=True)
     cancer_type = models.CharField(max_length=100, blank=True)
     cancer_stage = models.CharField(max_length=20, blank=True)
-    emergency_contact = models.CharField(max_length=100, blank=True)
+    emergency_contact = models.CharField(max_length=100, blank=True)  # the contact's name (and relation)
+    emergency_contact_phone = models.CharField(max_length=30, blank=True)
+    national_id = models.CharField(max_length=14, blank=True)  # Egyptian national ID, 14 digits, optional
     # NOTE: emr_patient_id uses null=True + unique=True intentionally.
     # SQLite (and PostgreSQL) treat each NULL as distinct, so multiple rows
     # with NULL are allowed while still enforcing uniqueness for non-NULL
