@@ -156,3 +156,69 @@ class ProfileTests(AccountsTestBase):
         self.login_user("patient_test", "PatientPassword123!")
         self.client.post("/api/profile/photo/", {"kind": "avatar", "file": picture()}, format="multipart")
         self.assertTrue(self.client.get("/api/auth/me/").data["avatar"])
+
+
+class ProfileMoreInfoTests(AccountsTestBase):
+    """The extra information on every role's profile."""
+
+    def setUp(self):
+        super().setUp()
+        from accounts.models import User
+        self.doctor = Doctor.objects.create(user=self.clinical_user, specialty="Oncology", license_no="LIC-9")
+        start = timezone.now() + timedelta(days=1)
+        Appointment.objects.create(patient=self.patient_profile_1, doctor=self.doctor, booked_by=self.admin_user,
+                                   start_time=start, end_time=start + timedelta(minutes=30), reason="Follow-up")
+        self.finance_user = User.objects.create_user("fin_t", email="fin_t@test.com", password="Finance-2026", role="finance")
+        self.patient_profile_1.national_id = "29003020101234"
+        self.patient_profile_1.emergency_contact_phone = "01099998888"
+        self.patient_profile_1.save()
+
+    def test_patient_sees_the_new_sections_and_full_national_id(self):
+        self.login_user("patient_test", "PatientPassword123!")
+        pt = self.client.get("/api/profile/").data["patient"]
+        for key in ("diagnoses", "plans", "medications", "orders", "imaging", "billing", "visits",
+                    "emergency_contact_phone", "national_id", "registered_on"):
+            self.assertIn(key, pt)
+        self.assertEqual(pt["national_id"], "29003020101234")
+        self.assertEqual(pt["billing"]["unpaid_count"], 0)
+        self.assertIsNotNone(self.client.get("/api/profile/").data["member_since"])
+
+    def test_doctor_sees_only_the_last_four_digits(self):
+        self.login_user("dr_salma_test", "DoctorPassword123!")
+        pt = self.client.get(f"/api/profile/{self.patient_user.id}/").data["patient"]
+        self.assertEqual(pt["national_id"], "**********1234")
+
+    def test_admin_sees_the_whole_number_and_last_login(self):
+        self.login_user()
+        res = self.client.get(f"/api/profile/{self.patient_user.id}/").data
+        self.assertEqual(res["patient"]["national_id"], "29003020101234")
+        self.assertIn("last_login", res)
+
+    def test_patient_edits_emergency_phone_and_national_id(self):
+        self.login_user("patient_test", "PatientPassword123!")
+        ok = self.client.patch("/api/profile/", {"emergency_contact_phone": "01012345678", "national_id": "30001010101234"}, format="json")
+        self.assertEqual(ok.status_code, 200, ok.data)
+        self.assertEqual(ok.data["patient"]["emergency_contact_phone"], "01012345678")
+        bad = self.client.patch("/api/profile/", {"national_id": "123"}, format="json")
+        self.assertEqual(bad.status_code, 400)
+        self.login_user("dr_salma_test", "DoctorPassword123!")
+        self.assertEqual(self.client.patch("/api/profile/", {"national_id": "30001010101234"}, format="json").status_code, 400)
+
+    def test_doctor_profile_has_upcoming_and_completed(self):
+        self.login_user("dr_salma_test", "DoctorPassword123!")
+        dr = self.client.get("/api/profile/").data["doctor"]
+        self.assertEqual(len(dr["upcoming"]), 1)
+        self.assertIn("completed", dr["stats"])
+        self.login_user("patient_test", "PatientPassword123!")
+        public = self.client.get(f"/api/profile/{self.clinical_user.id}/").data["doctor"]
+        self.assertNotIn("upcoming", public)  # patients' names stay private
+
+    def test_admin_and_finance_have_their_own_blocks(self):
+        self.login_user()
+        adm = self.client.get("/api/profile/").data
+        self.assertEqual(adm["admin"]["users"]["patient"], 2)
+        self.assertIn("recent_activity", adm["admin"])
+        self.login_user("fin_t", "Finance-2026")
+        fin = self.client.get("/api/profile/").data
+        self.assertIn("collected_total", fin["finance"])
+        self.assertIsNone(fin["admin"])

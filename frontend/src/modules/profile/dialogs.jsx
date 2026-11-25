@@ -47,7 +47,12 @@ export function EditDialog({ p, onClose, onSaved }) {
     username: p.username, first_name: p.first_name, last_name: p.last_name, email: p.email,
     phone: (p.patient && p.patient.phone) || p.phone || "",
     date_of_birth: p.patient?.date_of_birth || "",
-    ...(isPatient ? { address: p.patient.address, emergency_contact: p.patient.emergency_contact } : {}),
+    ...(isPatient ? {
+      address: p.patient.address, emergency_contact: p.patient.emergency_contact,
+      emergency_contact_phone: p.patient.emergency_contact_phone || "",
+      // a doctor sees a masked number: never send that back
+      national_id: p.patient.national_id && !p.patient.national_id.includes("*") ? p.patient.national_id : "",
+    } : {}),
     ...(isDoctor ? {
       bio: p.doctor.bio, years_experience: p.doctor.years_experience ?? "", education: p.doctor.education,
       languages: p.doctor.languages, focus_areas: p.doctor.focus_areas,
@@ -80,8 +85,11 @@ export function EditDialog({ p, onClose, onSaved }) {
             <Field label="Address" wide value={f.address} onChange={set("address")} autoComplete="street-address" />
             <Field label="Date of birth" type="date" value={f.date_of_birth} onChange={set("date_of_birth")}
                    max={todayIso()} hint="We'll use this for age-appropriate screening reminders." />
-            <Field label="Emergency contact" wide value={f.emergency_contact} onChange={set("emergency_contact")}
-                   placeholder="Name, relation and phone" hint="Who we call if we can't reach you." />
+            <Field label="Emergency contact" value={f.emergency_contact} onChange={set("emergency_contact")}
+                   placeholder="Name and relation, e.g. Ali (husband)" hint="Who we call if we can't reach you." />
+            <Field label="Emergency contact phone" type="tel" value={f.emergency_contact_phone} onChange={set("emergency_contact_phone")} />
+            <Field label="National ID" inputMode="numeric" maxLength={14} value={f.national_id} onChange={set("national_id")}
+                   placeholder="14 digits" hint="Optional." />
           </>}
           {isDoctor && <>
             <Field label="About you" wide rows={4} value={f.bio} onChange={set("bio")} maxLength={2000}

@@ -391,13 +391,13 @@ export default function Register({ onDone }) {
           className={role === "doctor" ? "on" : ""}
           onClick={() => setRole("doctor")}
         >
-          <Icon name="stethoscope" /> Doctor / clinic staff
+          <Icon name="stethoscope" /> Doctor
         </button>
       </div>
 
       {role === "patient" && (
         <>
-          <GoogleSignInButton onDone={onDone} onError={setAlert} label="Continue with Google" />
+          <GoogleSignInButton onDone={onDone} onError={setAlert} mode="signup" />
           <p className="auth-divider"><span>Or create your account manually</span></p>
           <PatientForm
             f={pf} setF={setPf} errors={perrs} setErrors={setPerrs}

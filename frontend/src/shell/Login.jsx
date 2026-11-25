@@ -34,7 +34,7 @@ export default function Login({ onDone }) {
         <p>Sign in to continue to your OncoSphere workspace.</p>
       </header>
 
-      <GoogleSignInButton onDone={onDone} onError={setError} label="Continue with Google" />
+      <GoogleSignInButton onDone={onDone} onError={setError} mode="signin" />
       <p className="auth-divider"><span>Or sign in with your password</span></p>
 
       <form className="auth-form" onSubmit={submit}>
@@ -49,7 +49,6 @@ export default function Login({ onDone }) {
 
       <div className="auth-divider"><span>New to OncoSphere?</span></div>
       <Link to="/register" className="auth-secondary">Create account</Link>
-      <Link to="/register/doctor" className="auth-secondary">Register as a doctor</Link>
       <p className="auth-fine">Doctor registrations are reviewed by an administrator. Finance staff accounts are created by an administrator.</p>
     </AuthLayout>
   );

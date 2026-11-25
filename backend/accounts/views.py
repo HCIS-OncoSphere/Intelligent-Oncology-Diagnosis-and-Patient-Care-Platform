@@ -3,7 +3,7 @@ import logging
 import re
 import requests
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from rest_framework import generics, permissions, viewsets
 from rest_framework.response import Response
@@ -40,7 +40,7 @@ def make_google_username(given_name, family_name, email):
     """Build a readable username from the Google account name, e.g. "alaa.khaled".
     Falls back to the email prefix (make_username) when names are missing, and
     adds a number if the username is already taken."""
-    base = " ".join((given_name or "").strip(), (family_name or "").strip()).strip()
+    base = " ".join([(given_name or "").strip(), (family_name or "").strip()]).strip()
     base = re.sub(r"[^A-Za-z0-9._\-]", ".", base).strip("._-").lower() or None
     if not base:
         return make_username(email)
@@ -109,27 +109,47 @@ class GoogleAuthView(generics.GenericAPIView):
         given_name = profile.get("given_name") or ""
         family_name = profile.get("family_name") or ""
 
+        # "signup" (Register page) must not silently log into an existing account;
+        # "signin" (Login page) must not silently create one.
+        mode = request.data.get("mode") or "signin"
         user = User.objects.filter(email__iexact=email).first()
         created = False
+        if user is not None and mode == "signup":
+            return Response(
+                {"detail": "An account with this email already exists. Please sign in instead."},
+                status=409,
+            )
+        if user is None and mode == "signin":
+            return Response(
+                {"detail": "No account found for this Google email. Please sign up first."},
+                status=404,
+            )
         if user is None:
             # First time: create a patient account. Password is unusable — the
             # person signs in with Google, not a password.
             created = True
-            with transaction.atomic():
-                user = User.objects.create_user(
-                    username=make_google_username(given_name, family_name, email),
-                    email=email,
-                    first_name=given_name,
-                    last_name=family_name,
-                    role=User.Role.PATIENT,
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=make_google_username(given_name, family_name, email),
+                        email=email,
+                        first_name=given_name,
+                        last_name=family_name,
+                        role=User.Role.PATIENT,
+                    )
+                    user.set_unusable_password()
+                    user.save()
+                    try:
+                        from patients.models import Patient
+                        Patient.objects.create(user=user)  # date_of_birth left blank; collected later
+                    except (ImportError, LookupError):
+                        pass
+            except IntegrityError:
+                # Double click / two tabs raced and the email (or username) was taken meanwhile.
+                return Response(
+                    {"detail": "An account with this email already exists. Please sign in instead."},
+                    status=409,
                 )
-                user.set_unusable_password()
-                user.save()
-                try:
-                    from patients.models import Patient
-                    Patient.objects.create(user=user)  # date_of_birth left blank; collected later
-                except (ImportError, LookupError):
-                    pass
         elif user.role != User.Role.PATIENT:
             # A Google account can't be used to sign in as staff/admin/finance.
             return Response(

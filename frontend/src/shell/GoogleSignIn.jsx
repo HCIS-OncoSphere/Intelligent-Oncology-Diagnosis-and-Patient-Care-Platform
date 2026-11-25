@@ -32,12 +32,12 @@ function onGisReady(fn) {
   document.head.appendChild(s);
 }
 
-export function GoogleSignInButton({ onDone, onError, label = "Continue with Google" }) {
+export function GoogleSignInButton({ onDone, onError, mode = "signin" }) {
   const ref = useRef(null);
 
   const handleCredential = useCallback(async (credential) => {
     try {
-      const me = await googleLogin(credential);
+      const me = await googleLogin(credential, mode);
       if (onDone) onDone(me);
     } catch (ex) {
       const msg =
@@ -46,7 +46,7 @@ export function GoogleSignInButton({ onDone, onError, label = "Continue with Goo
         "Google sign-in failed. Try again.";
       if (onError) onError(msg);
     }
-  }, [onDone, onError]);
+  }, [onDone, onError, mode]);
 
   useEffect(() => {
     if (!CLIENT_ID) return;
@@ -61,7 +61,7 @@ export function GoogleSignInButton({ onDone, onError, label = "Continue with Goo
         size: "large",
         width: "100%",
         logo_alignment: "center",
-        text: "continue_with",
+        text: mode === "signup" ? "signup_with" : "signin_with",
       });
     });
   }, [handleCredential, CLIENT_ID]);

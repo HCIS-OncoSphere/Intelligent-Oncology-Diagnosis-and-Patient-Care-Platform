@@ -109,8 +109,9 @@ export function register(fields) {
 
 /** Sign in or sign up a patient with a Google ID token (credential).
  * Mirrors login(): stores the access/refresh tokens, then returns /auth/me/. */
-export async function googleLogin(credential) {
-  const tokens = await api("/auth/google/", { method: "POST", body: { credential } });
+export async function googleLogin(credential, mode = "signin") {
+  // mode "signup": fails with 409 if the email already has an account; "signin": fails with 404 if it has none.
+  const tokens = await api("/auth/google/", { method: "POST", body: { credential, mode } });
   storeTokens(tokens);
   return api("/auth/me/");
 }

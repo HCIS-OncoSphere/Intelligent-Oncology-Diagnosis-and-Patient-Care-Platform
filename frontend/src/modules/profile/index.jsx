@@ -12,6 +12,10 @@ import "./profile.css";
 const GENDER = { M: "Male", F: "Female", O: "Other" };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const fmtDate = (d, opts) => new Intl.DateTimeFormat(undefined, opts).format(new Date(d));
+const money = (v) => `EGP ${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const METHOD = { cash: "Cash", card: "Card", insurance: "Insurance" };
+const day = { day: "numeric", month: "short", year: "numeric" };
+const ROLE_LABEL = { admin: "Administrator", finance: "Financial staff", clinical: "Clinical staff", patient: "Patient" };
 const hhmm = (t) => String(t).slice(0, 5);
 const list = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
 
@@ -77,7 +81,8 @@ function Header({ p, onPhoto, onEdit, nav }) {
                 ? <span className="pf-badge tone-green"><Icon name="checkCircle" />Available today</span>
                 : <span className="pf-badge tone-plain">Not working today</span>}
             </>}
-            {!pt && !dr && <span className="pf-badge tone-plain">{p.role}</span>}
+            {!pt && !dr && <span className="pf-badge tone-violet"><Icon name="shield" />{ROLE_LABEL[p.role] || p.role}</span>}
+            {p.member_since && <span className="pf-badge tone-plain"><Icon name="clock" />Member since {fmtDate(p.member_since, { month: "short", year: "numeric" })}</span>}
           </div>
         </div>
         {p.is_me && <button className="primary pf-edit" onClick={onEdit}><Icon name="pencil" /> Edit profile</button>}
@@ -141,12 +146,77 @@ function PatientView({ p }) {
           <Row icon="cake" label="Date of birth">
             {pt.date_of_birth ? fmtDate(pt.date_of_birth, { day: "numeric", month: "long", year: "numeric" }) : <span className="pf-empty">Not added</span>}
           </Row>
+          <Row icon="idCard" label="National ID">{pt.national_id}</Row>
+          <Row icon="clock" label="Registered">{pt.registered_on && fmtDate(pt.registered_on, day)}</Row>
         </Card>
 
         <Card icon="siren" tone="red" title="Emergency contact">
-          {pt.emergency_contact
-            ? <Row icon="phone" label="Contact">{pt.emergency_contact}</Row>
-            : <p className="pf-empty-block">No emergency contact yet.{p.is_me && " Add one with Edit profile."}</p>}
+          {pt.emergency_contact || pt.emergency_contact_phone ? <>
+            <Row icon="user" label="Name">{pt.emergency_contact}</Row>
+            <Row icon="phone" label="Phone">{pt.emergency_contact_phone}</Row>
+          </> : <p className="pf-empty-block">No emergency contact yet.{p.is_me && " Add one with Edit profile."}</p>}
+        </Card>
+
+        <Card icon="clipboard" tone="rose" title="Diagnoses">
+          {pt.diagnoses.length ? pt.diagnoses.map((d) => (
+            <div key={d.code} className="pf-line">
+              <span className="pf-pill tone-rose">{d.code}</span>
+              <span className="pf-line-text">{d.description}</span>
+              {d.is_primary && <span className="pf-pill tone-violet">Primary</span>}
+            </div>
+          )) : <p className="pf-empty-block">No diagnoses recorded yet.</p>}
+        </Card>
+
+        <Card icon="activity" tone="violet" title="Treatment plans">
+          {pt.plans.length ? pt.plans.map((t, i) => (
+            <div key={i} className="pf-line">
+              <span className="pf-line-text"><b>{t.type}</b>
+                <small>{fmtDate(t.start_date, day)}{t.end_date ? ` to ${fmtDate(t.end_date, day)}` : " · ongoing"} · Dr. {t.doctor}</small>
+                {t.description && <small>{t.description}</small>}
+              </span>
+              <span className={`pf-pill status-${t.status}`}>{t.status}</span>
+            </div>
+          )) : <p className="pf-empty-block">No treatment plans yet.</p>}
+        </Card>
+
+        <Card icon="pill" tone="amber" title="Medications">
+          {pt.medications.length ? pt.medications.map((m, i) => (
+            <div key={i} className="pf-line">
+              <span className="pf-line-text"><b>{m.medication}</b>
+                <small>{[m.dosage, m.frequency, m.duration].filter(Boolean).join(" · ")}</small>
+                {m.instructions && <small>{m.instructions}</small>}
+              </span>
+              <small>{fmtDate(m.prescribed_on, { day: "numeric", month: "short" })}</small>
+            </div>
+          )) : <p className="pf-empty-block">No prescriptions yet.</p>}
+        </Card>
+
+        <Card icon="microscope" tone="blue" title="Tests and results">
+          {pt.orders.length ? pt.orders.map((o, i) => (
+            <div key={i} className="pf-line">
+              <span className="pf-line-text"><b>{o.type}{o.description ? `: ${o.description}` : ""}</b>
+                <small>{o.result || "Waiting for the result"}</small>
+              </span>
+              <span className={`pf-pill status-${o.status}`}>{o.status}</span>
+            </div>
+          )) : <p className="pf-empty-block">No tests ordered yet.</p>}
+        </Card>
+
+        <Card icon="image" tone="teal" title="Imaging">
+          {pt.imaging ? <>
+            <Row icon="image" label="Latest scan">{pt.imaging.modality}{pt.imaging.body_part ? ` · ${pt.imaging.body_part}` : ""}</Row>
+            <Row icon="calendar" label="Scan date">{fmtDate(pt.imaging.study_date, day)}</Row>
+            <Row icon="layers" label="Studies on file">{pt.imaging.count}</Row>
+          </> : <p className="pf-empty-block">No scans on file.</p>}
+        </Card>
+
+        <Card icon="receipt" tone="green" title="Visits and billing">
+          <Row icon="calendar" label="Completed visits">{String(pt.visits.completed)}</Row>
+          <Row icon="clock" label="Last visit">{pt.visits.last_visit && fmtDate(pt.visits.last_visit, day)}</Row>
+          {pt.billing && <>
+            <Row icon="receipt" label="To pay">{pt.billing.unpaid_count ? `${money(pt.billing.amount_due)} (${pt.billing.unpaid_count} invoice${pt.billing.unpaid_count > 1 ? "s" : ""})` : "Nothing due"}</Row>
+            <Row icon="checkCircle" label="Paid invoices">{String(pt.billing.paid_count)}</Row>
+          </>}
         </Card>
 
         <Card icon="users" tone="violet" title="Care team" className="pf-span">
@@ -193,6 +263,7 @@ function DoctorView({ p }) {
           <Stat icon="calendar" tone="blue" label="Today" value={`${dr.stats.today} visits`} />
           <Stat icon="trending" tone="teal" label="This week" value={`${dr.stats.week} visits`} />
           <Stat icon="users" tone="violet" label="Patients" value={dr.stats.patients} />
+          <Stat icon="checkCircle" tone="green" label="Completed visits" value={dr.stats.completed} />
           <Stat icon="award" tone="amber" label="Experience" value={dr.years_experience != null ? `${dr.years_experience} years` : "Not added"} />
         </div>
       )}
@@ -212,6 +283,17 @@ function DoctorView({ p }) {
           </Card>
         )}
 
+        {own && (
+          <Card icon="calendar" tone="teal" title="Coming up">
+            {dr.upcoming.length ? dr.upcoming.map((a) => (
+              <Link key={a.id} to={`/profile/${a.patient_user_id}`} className="pf-slot">
+                <span className="pf-date"><b>{fmtDate(a.start_time, { day: "numeric" })}</b>{fmtDate(a.start_time, { month: "short" })}</span>
+                <span className="pf-event-text"><b>{a.patient}</b><span>{fmtDate(a.start_time, { weekday: "short", hour: "2-digit", minute: "2-digit" })} · {a.reason || "Appointment"}</span></span>
+              </Link>
+            )) : <p className="pf-empty-block">No upcoming appointments.</p>}
+          </Card>
+        )}
+
         <Card icon="clock" tone="teal" title="Working hours">
           <div className="pf-week">
             {DAYS.map((d, i) => (
@@ -223,9 +305,80 @@ function DoctorView({ p }) {
           <Row icon="mail" label="Email">{p.email}</Row>
           {p.is_me && <Row icon="user" label="Username">{p.username}</Row>}
           <Row icon="phone" label="Phone">{p.phone}</Row>
+          <Row icon="clock" label="Joined">{dr.registered_on && fmtDate(dr.registered_on, day)}</Row>
         </Card>
 
         {own && about}
+      </div>
+    </>
+  );
+}
+
+function AccountCard({ p }) {
+  return (
+    <Card icon="user" tone="blue" title="Account">
+      <Row icon="mail" label="Email">{p.email}</Row>
+      {p.is_me && <Row icon="user" label="Username">{p.username}</Row>}
+      <Row icon="phone" label="Phone">{p.phone}</Row>
+      <Row icon="clock" label="Member since">{p.member_since && fmtDate(p.member_since, day)}</Row>
+      {p.last_login && <Row icon="activity" label="Last sign-in">{fmtDate(p.last_login, { ...day, hour: "2-digit", minute: "2-digit" })}</Row>}
+    </Card>
+  );
+}
+
+function AdminView({ p }) {
+  const a = p.admin;
+  const u = a.users || {};
+  return (
+    <>
+      <div className="pf-stats">
+        <Stat icon="users" tone="violet" label="People" value={a.active_users}>
+          <span className="pf-stat-sub">{u.patient || 0} patients · {u.clinical || 0} doctors · {u.finance || 0} finance</span>
+        </Stat>
+        <Stat icon="shield" tone="rose" label="Doctor requests" value={a.pending_requests} />
+        <Stat icon="calendar" tone="teal" label="Visits today" value={a.today_visits} />
+        <Stat icon="receipt" tone="amber" label="Unpaid invoices" value={a.unpaid_invoices} />
+      </div>
+      <div className="pf-grid">
+        <AccountCard p={p} />
+        <Card icon="activity" tone="violet" title="Recent activity">
+          {a.recent_activity.length ? a.recent_activity.map((x, i) => (
+            <div key={i} className="pf-line">
+              <span className="pf-line-text"><b>{x.action} <code>{x.path}</code></b>
+                <small>{x.user || "Anonymous"} · {fmtDate(x.created_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
+              </span>
+              <span className={`pf-pill ${x.status_code < 400 ? "status-completed" : "status-no_show"}`}>{x.status_code}</span>
+            </div>
+          )) : <p className="pf-empty-block">Nothing logged yet.</p>}
+          <p className="pf-note"><Link to="/admin?tab=audit">Open the full audit log</Link></p>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function FinanceView({ p }) {
+  const f = p.finance;
+  return (
+    <>
+      <div className="pf-stats">
+        <Stat icon="receipt" tone="amber" label="Unpaid invoices" value={f.unpaid_count} />
+        <Stat icon="trending" tone="rose" label="Amount owed" value={money(f.amount_owed)} />
+        <Stat icon="checkCircle" tone="green" label="Payments you recorded" value={f.collected_count} />
+        <Stat icon="barChart" tone="teal" label="You collected" value={money(f.collected_total)} />
+      </div>
+      <div className="pf-grid">
+        <AccountCard p={p} />
+        <Card icon="receipt" tone="green" title="Your latest payments">
+          {f.recent_payments.length ? f.recent_payments.map((x, i) => (
+            <div key={i} className="pf-line">
+              <span className="pf-line-text"><b>{x.invoice}</b>
+                <small>{METHOD[x.method] || x.method} · {fmtDate(x.paid_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
+              </span>
+              <b>{money(x.amount)}</b>
+            </div>
+          )) : <p className="pf-empty-block">You haven't recorded a payment yet.</p>}
+        </Card>
       </div>
     </>
   );
@@ -261,13 +414,10 @@ function Profile() {
       <div className="pf-body">
         {p.patient && <PatientView p={p} />}
         {p.doctor && <DoctorView p={p} />}
-        {!p.patient && !p.doctor && (
-          <div className="pf-grid">
-            <Card icon="user" title="Account">
-              <Row icon="mail" label="Email">{p.email}</Row>
-              <Row icon="phone" label="Phone">{p.phone}</Row>
-            </Card>
-          </div>
+        {p.admin && <AdminView p={p} />}
+        {p.finance && <FinanceView p={p} />}
+        {!p.patient && !p.doctor && !p.admin && !p.finance && (
+          <div className="pf-grid"><AccountCard p={p} /></div>
         )}
       </div>
       {dialog === "edit" && <EditDialog p={p} onClose={() => setDialog(null)} onSaved={changed} />}
