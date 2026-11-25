@@ -5,6 +5,8 @@ import { api } from "../../api.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { errorText } from "../../shared/ui.jsx";
 import { METHODS, money } from "./money.js";
+import { CardCheckout } from "./CardCheckout.jsx";
+import { makeReference, mockAuthorize, validateCard } from "./cardMock.js";
 
 /** invoice: {id, number, total, paid} (either an invoice row or an appointment's `bill`). */
 export function PaymentDialog({ invoice, staff, onDone, onClose }) {
@@ -13,13 +15,25 @@ export function PaymentDialog({ invoice, staff, onDone, onClose }) {
   const [amount, setAmount] = useState(left.toFixed(2));
   const [method, setMethod] = useState(staff ? "cash" : "card");
   const [txn, setTxn] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
+  const [step, setStep] = useState(""); // patient card checkout: "" | "processing"
   useEffect(() => { ref.current.showModal(); return () => ref.current?.open && ref.current.close(); }, []);
+
+  const send = (ref) =>
+    api(`/invoices/${invoice.id}/pay/`, { method: "POST", body: { amount, method, ...(ref ? { transaction_ref: ref } : {}) } })
+      .then((inv) => onDone(inv)).catch((x) => { setErr(errorText(x)); setBusy(false); setStep(""); });
 
   const submit = (e) => {
     e.preventDefault();
-    setBusy(true); setErr("");
-    api(`/invoices/${invoice.id}/pay/`, { method: "POST", body: { amount, method, ...(txn.trim() ? { transaction_ref: txn.trim() } : {}) } })
-      .then((inv) => onDone(inv)).catch((x) => { setErr(errorText(x)); setBusy(false); });
+    setErr("");
+    if (staff) { setBusy(true); return send(txn.trim()); }
+    // Patient: mock card checkout. Only the generated reference (last 4 digits + random id) is sent.
+    const bad = validateCard(card);
+    if (bad) return setErr(bad);
+    setBusy(true); setStep("processing");
+    mockAuthorize(card.number)
+      .then(() => send(makeReference(card.number)))
+      .catch((x) => { setErr(x.message); setBusy(false); setStep(""); });
   };
 
   return (
@@ -40,7 +54,8 @@ export function PaymentDialog({ invoice, staff, onDone, onClose }) {
         <label>Amount
           <input type="number" min="0.01" step="0.01" max={left.toFixed(2)} value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </label>
-        {method !== "cash" && (
+        {!staff && <CardCheckout card={card} setCard={setCard} disabled={busy} />}
+        {staff && method !== "cash" && (
           <label>{method === "insurance" ? "Insurance approval number" : "Card transaction reference"} <small>(optional)</small>
             <input value={txn} maxLength={60} onChange={(e) => setTxn(e.target.value)} />
           </label>
@@ -48,7 +63,7 @@ export function PaymentDialog({ invoice, staff, onDone, onClose }) {
         {err && <p className="msg err">{err}</p>}
         <div className="confirm-actions">
           <button type="button" data-cancel onClick={onClose} disabled={busy}>Not now</button>
-          <button className="primary" disabled={busy || !(Number(amount) > 0)}>{busy ? "Saving…" : staff ? "Record payment" : `Pay ${money(amount)}`}</button>
+          <button className="primary" disabled={busy || !(Number(amount) > 0) || (!staff && !(card.number && card.name && card.expiry && card.cvv))}>{step === "processing" ? "Processing…" : busy ? "Saving…" : staff ? "Record payment" : `Pay ${money(amount)}`}</button>
         </div>
       </form>
     </dialog>
