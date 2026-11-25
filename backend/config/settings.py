@@ -242,3 +242,8 @@ HL7_PORT = int(os.getenv("HL7_PORT", "2575"))
 
 # Orthanc (DICOM archive) used by the imaging app
 ORTHANC_URL = os.getenv("ORTHANC_URL", "http://localhost:8042")
+
+# Google OAuth client ID (Web application) for "Sign in with Google".
+# Set this in backend/.env (never commit it). Optional: if set, the Google ID
+# token's audience is checked against it so only your app's tokens are accepted.
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")

@@ -167,7 +167,7 @@ export default function DoctorRegister() {
         <SubmitButton busy={busy} busyText="Sending your request…">Send registration request</SubmitButton>
       </form>
 
-      <p className="auth-switch">Already approved? <Link to="/login">Sign in</Link> · Patient? <Link to="/register">Create a patient account</Link></p>
+      <p className="auth-switch">Already approved? <Link to="/login">Sign in</Link> · Patient? <Link to="/register">Create account</Link></p>
     </AuthLayout>
   );
 }

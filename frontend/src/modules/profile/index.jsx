@@ -83,7 +83,7 @@ function Header({ p, onPhoto, onEdit, nav }) {
             {pt && <>
               <span className="pf-badge tone-teal"><Icon name="user" />Patient</span>
               <span className="pf-badge tone-blue"><Icon name="idCard" />{pt.mrn}</span>
-              <span className="pf-badge tone-plain">{GENDER[pt.gender] || pt.gender} · {pt.age} years</span>
+              <span className="pf-badge tone-plain">{GENDER[pt.gender] || pt.gender} · {pt.age != null ? `${pt.age} years` : "Age not set"}</span>
             </>}
             {dr && <>
               <span className="pf-badge tone-blue"><Icon name="stethoscope" />{dr.specialty}</span>
@@ -153,7 +153,9 @@ function PatientView({ p }) {
           {/* made by the system at sign-up; shown only to its owner */}
           {p.is_me && <Row icon="user" label="Username">{p.username}</Row>}
           <Row icon="mapPin" label="Address">{pt.address}</Row>
-          <Row icon="cake" label="Date of birth">{fmtDate(pt.date_of_birth, { day: "numeric", month: "long", year: "numeric" })}</Row>
+          <Row icon="cake" label="Date of birth">
+            {pt.date_of_birth ? fmtDate(pt.date_of_birth, { day: "numeric", month: "long", year: "numeric" }) : <span className="pf-empty">Not added</span>}
+          </Row>
         </Card>
 
         <Card icon="siren" tone="red" title="Emergency contact">

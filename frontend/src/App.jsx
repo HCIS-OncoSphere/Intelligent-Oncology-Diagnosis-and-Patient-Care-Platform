@@ -9,7 +9,6 @@ import { ThemeToggle } from "./shared/ThemeToggle.jsx";
 import { Logo } from "./shared/ui.jsx";
 import Home from "./shell/Home.jsx";
 import Login from "./shell/Login.jsx";
-import DoctorRegister from "./shell/DoctorRegister.jsx";
 import ForcePassword from "./shell/ForcePassword.jsx";
 import Register from "./shell/Register.jsx";
 import { Bell } from "./shared/Bell.jsx";
@@ -75,7 +74,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register onDone={setMe} />} />
-      <Route path="/register/doctor" element={<DoctorRegister />} />
+      <Route path="/register/doctor" element={<Navigate to="/register?role=doctor" replace />} />
       <Route path="*" element={<Login onDone={setMe} />} />
     </Routes>
   );

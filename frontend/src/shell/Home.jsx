@@ -105,7 +105,7 @@ export default function Home() {
               and their care team always look at the same picture.
             </p>
             <div className="lp-cta">
-              <Link to="/register" className="lp-btn accent lg">Create a patient account <Icon name="arrowRight" /></Link>
+              <Link to="/register" className="lp-btn accent lg">Create account <Icon name="arrowRight" /></Link>
               <Link to="/login" className="lp-btn on-dark lg">Sign in</Link>
             </div>
             <ul className="lp-proof">
@@ -177,7 +177,7 @@ export default function Home() {
               {r.points.map((p) => <li key={p}><Icon name="checkCircle" /> {p}</li>)}
             </ul>
             {role === "patient"
-              ? <Link to="/register" className="lp-btn primary">Create a patient account <Icon name="arrowRight" /></Link>
+              ? <Link to="/register" className="lp-btn primary">Create account <Icon name="arrowRight" /></Link>
               : <p className="lp-note"><Icon name="shield" /> Staff accounts are created by your clinic's administrator.</p>}
           </div>
         </div>

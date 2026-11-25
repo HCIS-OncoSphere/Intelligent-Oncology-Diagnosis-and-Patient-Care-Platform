@@ -107,6 +107,14 @@ export function register(fields) {
   return api("/auth/register/", { method: "POST", body: fields });
 }
 
+/** Sign in or sign up a patient with a Google ID token (credential).
+ * Mirrors login(): stores the access/refresh tokens, then returns /auth/me/. */
+export async function googleLogin(credential) {
+  const tokens = await api("/auth/google/", { method: "POST", body: { credential } });
+  storeTokens(tokens);
+  return api("/auth/me/");
+}
+
 /** Doctor self-registration (multipart: it carries the licence file). The account waits for admin approval. */
 export function registerDoctor(formData) {
   clearTokens();

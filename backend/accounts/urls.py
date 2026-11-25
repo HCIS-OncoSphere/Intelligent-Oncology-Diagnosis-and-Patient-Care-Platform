@@ -5,7 +5,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .profile import ProfilePhotoView, ProfileView
 from .serializers import LoginSerializer
 from .doctors import AdminDoctorCreateView, AdminFinanceCreateView, DoctorRegisterView, DoctorRequestViewSet
-from .views import ChangePasswordView, MeView, NotificationView, RegisterView, UserViewSet
+from .views import (
+    ChangePasswordView, GoogleAuthView, MeView, NotificationView, RegisterView, UserViewSet,
+)
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
@@ -13,6 +15,7 @@ router.register("admin/doctor-requests", DoctorRequestViewSet, basename="doctor-
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),
+    path("auth/google/", GoogleAuthView.as_view(), name="google-auth"),
     path("auth/register/doctor/", DoctorRegisterView.as_view(), name="register-doctor"),
     path("auth/change-password/", ChangePasswordView.as_view(), name="change-password"),
     path("notifications/", NotificationView.as_view(), name="notifications"),

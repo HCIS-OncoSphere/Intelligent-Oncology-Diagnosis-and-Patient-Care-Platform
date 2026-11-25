@@ -7,3 +7,5 @@ hl7>=0.4.5
 psycopg[binary,pool]>=3.2
 argon2-cffi>=23.1
 Pillow>=10.4
+# Verifies Google ID tokens server-to-server (patient sign-up / sign-in with Google)
+requests>=2.31.0

@@ -34,6 +34,8 @@ def _url(request, image):
 
 
 def _age(born):
+    if not born:
+        return None  # patient signed up with Google and hasn't given a DOB yet
     today = date.today()
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
@@ -166,6 +168,7 @@ def build_profile(request, user):
 class ProfileUpdateSerializer(serializers.Serializer):
     """What you may change on your own profile. Medical fields (cancer type, stage, blood type)
     and the doctor's license and specialty stay with staff and admins."""
+    username = serializers.CharField(max_length=150, required=False)
     first_name = serializers.CharField(max_length=150, required=False)
     last_name = serializers.CharField(max_length=150, required=False)
     email = serializers.EmailField(required=False)
@@ -173,6 +176,7 @@ class ProfileUpdateSerializer(serializers.Serializer):
     # patients
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
     emergency_contact = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
     # doctors
     bio = serializers.CharField(max_length=2000, required=False, allow_blank=True)
     years_experience = serializers.IntegerField(min_value=0, max_value=80, required=False, allow_null=True)
@@ -180,8 +184,18 @@ class ProfileUpdateSerializer(serializers.Serializer):
     languages = serializers.CharField(max_length=200, required=False, allow_blank=True)
     focus_areas = serializers.CharField(max_length=300, required=False, allow_blank=True)
 
-    PATIENT_ONLY = {"address", "emergency_contact"}
+    PATIENT_ONLY = {"address", "emergency_contact", "date_of_birth"}
     DOCTOR_ONLY = {"bio", "years_experience", "education", "languages", "focus_areas"}
+
+    def validate_username(self, v):
+        v = v.strip()
+        if not v:
+            raise serializers.ValidationError("Choose a username.")
+        if len(v) < 3:
+            raise serializers.ValidationError("Username is too short (at least 3 characters).")
+        if User.objects.filter(username__iexact=v).exclude(pk=self.context["user"].pk).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return v
 
     def validate_email(self, v):
         v = v.strip().lower()
@@ -221,14 +235,14 @@ class ProfileView(APIView):
         s.is_valid(raise_exception=True)
         d = s.validated_data
 
-        for f in ("first_name", "last_name", "email", "phone"):
+        for f in ("username", "first_name", "last_name", "email", "phone"):
             if f in d:
                 setattr(user, f, d[f])
         user.save()
 
         if user.role == "patient" and hasattr(user, "patient"):
             p = user.patient
-            for f in ("phone", "address", "emergency_contact"):
+            for f in ("phone", "address", "emergency_contact", "date_of_birth"):
                 if f in d:
                     setattr(p, f, d[f])
             p.save()

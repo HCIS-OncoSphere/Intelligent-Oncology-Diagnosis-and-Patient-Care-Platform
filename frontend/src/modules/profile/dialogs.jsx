@@ -7,6 +7,13 @@ import { errorText } from "../../shared/ui.jsx";
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// Local calendar date as YYYY-MM-DD (toISOString alone would give the UTC date).
+const todayIso = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+};
+
 function Dialog({ title, onClose, children, wide }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -37,8 +44,9 @@ const Field = ({ label, hint, wide, ...input }) => (
 export function EditDialog({ p, onClose, onSaved }) {
   const isPatient = !!p.patient, isDoctor = !!p.doctor;
   const [f, setF] = useState({
-    first_name: p.first_name, last_name: p.last_name, email: p.email,
+    username: p.username, first_name: p.first_name, last_name: p.last_name, email: p.email,
     phone: (p.patient && p.patient.phone) || p.phone || "",
+    date_of_birth: p.patient?.date_of_birth || "",
     ...(isPatient ? { address: p.patient.address, emergency_contact: p.patient.emergency_contact } : {}),
     ...(isDoctor ? {
       bio: p.doctor.bio, years_experience: p.doctor.years_experience ?? "", education: p.doctor.education,
@@ -52,6 +60,8 @@ export function EditDialog({ p, onClose, onSaved }) {
     e.preventDefault();
     setBusy(true); setErr("");
     const body = { ...f };
+    // an emptied date field means "clear it" → send null so the backend unsets DOB
+    if (body.date_of_birth === "") body.date_of_birth = null;
     if (isDoctor) body.years_experience = body.years_experience === "" ? null : Number(body.years_experience);
     try { onSaved(await api("/profile/", { method: "PATCH", body })); onClose(); }
     catch (ex) { setErr(errorText(ex)); setBusy(false); }
@@ -61,12 +71,15 @@ export function EditDialog({ p, onClose, onSaved }) {
     <Dialog title="Edit profile" onClose={onClose} wide>
       <form onSubmit={save} className="pf-form">
         <div className="pf-form-grid">
+          <Field label="Username" value={f.username} onChange={set("username")} required autoComplete="username" hint="Used to sign in instead of your email." />
           <Field label="First name" value={f.first_name} onChange={set("first_name")} required autoComplete="given-name" />
           <Field label="Last name" value={f.last_name} onChange={set("last_name")} required autoComplete="family-name" />
           <Field label="Email" type="email" value={f.email} onChange={set("email")} required autoComplete="email" />
           <Field label="Phone" type="tel" value={f.phone} onChange={set("phone")} autoComplete="tel" />
           {isPatient && <>
             <Field label="Address" wide value={f.address} onChange={set("address")} autoComplete="street-address" />
+            <Field label="Date of birth" type="date" value={f.date_of_birth} onChange={set("date_of_birth")}
+                   max={todayIso()} hint="We'll use this for age-appropriate screening reminders." />
             <Field label="Emergency contact" wide value={f.emergency_contact} onChange={set("emergency_contact")}
                    placeholder="Name, relation and phone" hint="Who we call if we can't reach you." />
           </>}

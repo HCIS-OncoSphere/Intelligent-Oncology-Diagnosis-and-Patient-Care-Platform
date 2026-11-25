@@ -18,7 +18,10 @@ class Patient(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="patient")
     mrn = models.CharField(max_length=20, unique=True, default=new_mrn)
-    date_of_birth = models.DateField()
+    # date_of_birth is required when a patient signs up manually (see
+    # accounts.serializers.RegisterSerializer) but is left blank when the
+    # account is created with Google; the clinic collects it before clinical use.
+    date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=1, choices=Gender.choices, default=Gender.OTHER)
     phone = models.CharField(max_length=30, blank=True)
     address = models.CharField(max_length=255, blank=True)
