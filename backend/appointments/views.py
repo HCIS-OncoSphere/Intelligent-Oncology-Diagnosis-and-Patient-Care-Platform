@@ -12,7 +12,9 @@ Endpoints (all under /api/):
   appointments/reminders/        GET tomorrow's scheduled list (staff)
 """
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 
+from django.apps import apps
 from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -246,12 +248,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     doctor_name = serializers.SerializerMethodField()
+    bill = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
         fields = ["id", "patient", "patient_name", "patient_mrn", "doctor", "doctor_name", "start_time",
-                  "end_time", "status", "reason", "created_at"]
+                  "end_time", "status", "reason", "created_at", "bill"]
         read_only_fields = ["created_at"]
+
+    def get_bill(self, obj):
+        """The visit's invoice when the billing app is installed: {invoice, number, status, total, paid}, else null."""
+        invoices = getattr(obj, "invoice_set", None)  # reverse relation added by billing.Invoice.appointment
+        if invoices is None:
+            return None
+        inv = next((i for i in invoices.all() if i.status != "cancelled"), None)
+        if inv is None:
+            return None
+        paid = sum((p.amount for p in inv.payments.all()), Decimal("0.00"))
+        return {"invoice": inv.id, "number": inv.invoice_number, "status": inv.status,
+                "total": f"{inv.total_amount:.2f}", "paid": f"{paid:.2f}"}
 
     def get_patient_name(self, obj):
         u = obj.patient.user
@@ -344,6 +359,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Appointment.objects.select_related("patient__user", "doctor__user").order_by("start_time")
+        if apps.is_installed("billing"):  # the `bill` field reads these; billing stays optional
+            qs = qs.prefetch_related("invoice_set__payments")
         u, p = self.request.user, self.request.query_params
         if self.action != "list":
             return qs if is_staff(u) else qs.filter(patient__user=u)
@@ -423,6 +440,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         qs = (Appointment.objects.select_related("patient__user", "doctor__user")
               .filter(start_time__gte=s, start_time__lt=s + timedelta(days=1), status=Appointment.Status.SCHEDULED)
               .order_by("start_time"))
+        if apps.is_installed("billing"):
+            qs = qs.prefetch_related("invoice_set__payments")
         return Response([{**self.get_serializer(a).data, "patient_phone": a.patient.phone or a.patient.user.phone}
                          for a in qs])
 

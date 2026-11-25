@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { Msg, Table, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
+import { PaymentDialog } from "../billing/PaymentDialog.jsx";
 import { AppointmentList } from "./AppointmentList.jsx";
 import { Availability } from "./Availability.jsx";
 import { BookingWizard } from "./BookingWizard.jsx";
@@ -21,6 +22,8 @@ function Appointments({ me }) {
 
   const [doctors, setDoctors] = useState([]), [patients, setPatients] = useState([]), [nextFree, setNextFree] = useState(null);
   const [moving, setMoving] = useState(null), [msg, setMsg] = useState({}), [version, setVersion] = useState(0);
+  const [prices, setPrices] = useState({}), [paying, setPaying] = useState(null);
+  const desk = admin; // the reception desk takes payments; doctors don't handle money
   const [reminders, loadReminders] = useList(staff ? "/appointments/reminders/" : "/appointments/?status=__none__");
 
   const loadDoctors = () => api("/doctors/").then(setDoctors);
@@ -28,6 +31,8 @@ function Appointments({ me }) {
   useEffect(() => {
     loadDoctors().catch(() => {});
     if (canBook) loadNextFree();
+    // what each reason costs (empty when the billing app is not installed)
+    if (canBook) api("/services/visit-prices/").then((r) => setPrices(Object.fromEntries(r.map((p) => [p.reason.toLowerCase(), p])))).catch(() => {});
     if (admin) api("/patients/").then(setPatients).catch(() => {});
   }, []);
 
@@ -50,12 +55,15 @@ function Appointments({ me }) {
   const doctor = rawDoctor === "all" || doctors.some((d) => String(d.id) === rawDoctor) ? rawDoctor : "all";
 
   const startMove = (a) => { setMoving(a); setMsg({}); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const props = { doctors, doctor, setDoctor, staff, ask, onMove: startMove, version };
+  const pay = (b) => setPaying({ id: b.invoice, number: b.number, total: b.total, paid: b.paid });
+  const props = { doctors, doctor, setDoctor, staff, desk, ask, onMove: startMove, onPay: pay, version };
 
   return (
     <>
       <Msg m={msg} />
       {popup}
+      {paying && <PaymentDialog invoice={paying} staff={staff} onClose={() => setPaying(null)}
+        onDone={(inv) => { setPaying(null); changed(inv.status === "paid" ? `${inv.invoice_number} is paid. The receipt is in Invoices.` : `Payment saved on ${inv.invoice_number}.`); }} />}
 
       {moving ? (
         <BookingWizard me={me} doctors={doctors} moving={moving}
@@ -72,7 +80,7 @@ function Appointments({ me }) {
           {view === "week" && <WeekCalendar {...props} />}
           {view === "list" && <AppointmentList {...props} onBook={canBook ? () => setView("book") : null} />}
           {view === "book" && canBook && (
-            <BookingWizard me={me} doctors={doctors} nextFree={nextFree} patients={patients}
+            <BookingWizard me={me} doctors={doctors} nextFree={nextFree} patients={patients} prices={prices}
               onDone={(t) => { changed(t); if (!admin) setView("list"); }} />
           )}
           {view === "hours" && <Availability me={me} doctors={doctors} reloadDoctors={loadDoctors} />}

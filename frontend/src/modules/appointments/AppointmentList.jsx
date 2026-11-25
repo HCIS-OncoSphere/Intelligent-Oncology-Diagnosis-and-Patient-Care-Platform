@@ -5,11 +5,12 @@ import { Avatar } from "../../shared/Avatar.jsx";
 import { Icon } from "../../shared/Icon.jsx";
 import { Badge, Table, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
-import { ActionButtons, STATUSES, hhmm, isYmd, relDay, shortDay } from "./shared.jsx";
+import { ActionButtons, BillCell, STATUSES, hhmm, isYmd, relDay, shortDay } from "./shared.jsx";
 
 const CHIPS = [["", "All"], ["upcoming", "Upcoming"], ...STATUSES.map((s) => [s, s === "no_show" ? "No-show" : s[0].toUpperCase() + s.slice(1)])];
 
-export function AppointmentList({ staff, ask, onMove, onBook, version }) {
+export function AppointmentList({ staff, desk, ask, onMove, onPay, onBook, version }) {
+  const money = !staff || desk; // doctors don't see the billing column
   const [, setSearch] = useSearchParams();
   const [rawStatus, setStatus] = useQueryState("status", "", { replace: true });
   const [rawDate, setDate] = useQueryState("date", "", { replace: true });
@@ -37,7 +38,7 @@ export function AppointmentList({ staff, ask, onMove, onBook, version }) {
         {onBook && <button className="primary with-icon" onClick={onBook}><Icon name="calendar" /> Book a visit</button>}
       </div>
       <p className="hint ap-count">{rows.length} appointment{rows.length === 1 ? "" : "s"}</p>
-      <Table head={["When", "Doctor", ...(staff ? ["Patient"] : []), "Reason", "Status", ""]}
+      <Table head={["When", "Doctor", ...(staff ? ["Patient"] : []), "Reason", "Status", ...(money ? ["Bill"] : []), ""]}
         empty={status || date ? "No appointments match these filters." : "No appointments yet."}
         rows={rows.map((a) => {
           const rel = relDay(a.start_time);
@@ -51,6 +52,7 @@ export function AppointmentList({ staff, ask, onMove, onBook, version }) {
               {staff && <td>{a.patient_name}<br /><small>{a.patient_mrn}</small></td>}
               <td>{a.reason || "—"}</td>
               <td><Badge s={a.status} /></td>
+              {money && <td>{a.bill ? <BillCell a={a} staff={staff} desk={desk} onPay={onPay} /> : <small>—</small>}</td>}
               <td><ActionButtons a={a} staff={staff} ask={ask} onMove={onMove} /></td>
             </tr>
           );

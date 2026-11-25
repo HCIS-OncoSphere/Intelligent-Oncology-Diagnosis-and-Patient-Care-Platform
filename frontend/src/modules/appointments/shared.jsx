@@ -1,7 +1,9 @@
 // Pieces every appointments view uses: date helpers, the reasons list, and the confirm-then-act flow for
 // cancel / completed / no-show (one popup, the same wording everywhere).
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../api.js";
+import { price } from "../billing/money.js";
 import { ConfirmDialog } from "../../shared/ConfirmDialog.jsx";
 import { errorText } from "../../shared/ui.jsx";
 
@@ -90,6 +92,22 @@ export function ActionButtons({ a, staff, ask, onMove }) {
         <button className="sm ap-ok" onClick={() => ask("completed", a)}>Completed</button>
         <button className="sm danger" onClick={() => ask("no_show", a)}>No-show</button>
       </>}
+    </span>
+  );
+}
+
+/** The visit's bill: paid / to pay, with Pay (patient), Record payment (desk) and a link to the receipt.
+ *  Doctors don't see money (desk=false and staff=true shows nothing). */
+export function BillCell({ a, staff, desk, onPay }) {
+  const b = a.bill;
+  if (!b || (staff && !desk)) return null;
+  const left = Number(b.total) - Number(b.paid);
+  const canPay = b.status === "pending" && a.status !== "cancelled";
+  return (
+    <span className="ap-bill">
+      <span className={`ap-bill-tag ${b.status}`}>{b.status === "paid" ? "Paid" : `To pay ${price(left)}`}</span>
+      {canPay && <button className="sm primary" onClick={() => onPay(b)}>{staff ? "Record payment" : "Pay"}</button>}
+      <Link className="ap-bill-link" to={`/billing?receipt=${b.invoice}`}>{b.status === "paid" ? "Receipt" : "Invoice"}</Link>
     </span>
   );
 }

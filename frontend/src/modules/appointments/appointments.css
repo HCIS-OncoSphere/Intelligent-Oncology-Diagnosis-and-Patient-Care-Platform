@@ -19,6 +19,22 @@ button.ap-ok:hover:not(:disabled) { border-color: var(--ok); background: var(--o
 .s-no_show { --st: var(--danger); --st-soft: var(--danger-soft); }
 .s-cancelled { --st: var(--muted); --st-soft: var(--surface-2); }
 
+/* ---------- bills ---------- */
+.ap-bill { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.ap-bill button { margin: 0; }
+.ap-bill-tag { font-size: .78rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.ap-bill-tag.pending { background: var(--warn-soft); color: var(--warn); }
+.ap-bill-tag.paid { background: var(--ok-soft); color: var(--ok); }
+.ap-bill-link { font-size: .84rem; font-weight: 600; }
+.ap-price { margin-top: 6px; font-size: .84rem; font-weight: 700; color: var(--accent); }
+.ap-cost { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); }
+.ap-cost > span { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ap-cost small { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ap-cost b { font-size: 1.15rem; color: var(--accent); }
+.ap-cost p { margin: 4px 0 0; font-size: .8rem; color: var(--muted); }
+.ap-cost.none { background: var(--surface-2); }
+.ap-cost.none b { font-size: .95rem; color: var(--text); }
+
 /* ---------- list ---------- */
 .ap-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ap-chips button { border-radius: 999px; min-height: 34px; padding: 5px 14px; font-size: .88rem; color: var(--muted); }

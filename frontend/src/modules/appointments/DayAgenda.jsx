@@ -4,7 +4,7 @@ import { api } from "../../api.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { Badge, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
-import { ActionButtons, DoctorFilter, addDays, hhmm, isYmd, longDay, parseYmd, todayYmd } from "./shared.jsx";
+import { ActionButtons, BillCell, DoctorFilter, addDays, hhmm, isYmd, longDay, parseYmd, todayYmd } from "./shared.jsx";
 
 /** Join back-to-back free slots into ranges: 10:30–12:00. */
 function freeRanges(slots) {
@@ -17,7 +17,7 @@ function freeRanges(slots) {
   return out;
 }
 
-export function DayAgenda({ doctors, doctor, setDoctor, ask, onMove, version }) {
+export function DayAgenda({ doctors, doctor, setDoctor, desk, ask, onMove, onPay, version }) {
   const today = todayYmd();
   const [raw, setDay] = useQueryState("day", today, { replace: true });
   const day = isYmd(raw) ? raw : today;
@@ -73,6 +73,7 @@ export function DayAgenda({ doctors, doctor, setDoctor, ask, onMove, version }) 
                   <b>{a.patient_name}</b> <small>{a.patient_mrn}</small>
                   <span className="ap-visit-meta">{a.reason || "No reason given"}{!one && ` · ${a.doctor_name}`}</span>
                 </div>
+                <BillCell a={a} staff desk={desk} onPay={onPay} />
                 <Badge s={a.status} />
                 <ActionButtons a={a} staff ask={ask} onMove={onMove} />
               </div>

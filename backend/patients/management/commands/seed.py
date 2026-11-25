@@ -23,10 +23,21 @@ class Command(BaseCommand):
         pu.set_password("Patient12345"); pu.save()
         Patient.objects.get_or_create(user=pu, defaults=dict(date_of_birth=date(1985, 4, 2), gender="M", phone="01000000000", cancer_type="Pancreatic", cancer_stage="II"))
 
-        for code, desc in [("C25.9", "Malignant neoplasm of pancreas, unspecified"), ("C34.90", "Malignant neoplasm of unspecified part of bronchus or lung"), ("Z51.11", "Encounter for antineoplastic chemotherapy")]:
+        for code, desc in [("C25.9", "Malignant neoplasm of pancreas, unspecified"), ("C34.90", "Malignant neoplasm of unspecified part of bronchus or lung"), ("Z51.11", "Encounter for antineoplastic chemotherapy"), ("Z51.0", "Encounter for antineoplastic radiation therapy")]:
             ICD10Code.objects.get_or_create(code=code, defaults=dict(description=desc, category="Neoplasms"))
-        for name, price, code in [("Oncology consultation", "500.00", "C25.9"), ("CT scan - abdomen", "1800.00", "C25.9"), ("Chemotherapy session", "4200.00", "Z51.11")]:
-            Service.objects.get_or_create(name=name, defaults=dict(price=price, icd10_code_id=code))
+        # the last value is the booking reason the service is charged for (see billing/signals.py)
+        for name, price, code, reason in [
+            ("Oncology consultation", "500.00", "C25.9", "Consultation"),
+            ("Follow-up visit", "300.00", None, "Follow-up visit"),
+            ("CT scan - abdomen", "1800.00", "C25.9", "Imaging / scan"),
+            ("Chemotherapy session", "4200.00", "Z51.11", "Chemotherapy session"),
+            ("Radiotherapy session", "2500.00", "Z51.0", "Radiotherapy session"),
+            ("Lab results review", "250.00", None, "Lab results review"),
+        ]:
+            svc, _ = Service.objects.get_or_create(name=name, defaults=dict(price=price, icd10_code_id=code, visit_reason=reason))
+            if not svc.visit_reason:  # databases seeded before visit_reason existed
+                svc.visit_reason = reason
+                svc.save(update_fields=["visit_reason"])
         self.stdout.write(self.style.SUCCESS("Seeded: admin / dr.salma / patient1"))
 
         # sample clinical data for patient1 (idempotent)

@@ -7,6 +7,7 @@ import { Avatar } from "../../shared/Avatar.jsx";
 import { ConfirmDialog } from "../../shared/ConfirmDialog.jsx";
 import { Icon } from "../../shared/Icon.jsx";
 import { errorText } from "../../shared/ui.jsx";
+import { price } from "../billing/money.js";
 import { REASONS, addDays, hhmm, isYmd, longDay, mondayOf, parseYmd, shortDay, todayYmd, when, ymd } from "./shared.jsx";
 
 const PARTS = [["Morning", 0, 12], ["Afternoon", 12, 17], ["Evening", 17, 24]];
@@ -106,7 +107,7 @@ function TimeStep({ doctor, firstFree, onPick, reload }) {
   );
 }
 
-export function BookingWizard({ me, doctors, nextFree, patients, moving, onDone, onStopMoving }) {
+export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, moving, onDone, onStopMoving }) {
   const admin = me.role === "admin";
   const steps = moving ? ["Time"] : admin ? ["Patient", "Reason", "Doctor", "Time"] : ["Reason", "Doctor", "Time"];
   const [at, setAt] = useState(0);
@@ -118,6 +119,7 @@ export function BookingWizard({ me, doctors, nextFree, patients, moving, onDone,
   const step = steps[at];
   const doctor = doctors.find((d) => String(d.id) === String(doctorId));
   const reasonText = reason === "Other" ? other.trim() || "Other" : reason;
+  const cost = reason ? prices[reasonText.toLowerCase()] : null; // {price, service} when this reason has a price
   const next = () => setAt((i) => Math.min(i + 1, steps.length - 1));
   const goTo = (name) => { const i = steps.indexOf(name); if (i >= 0 && i <= at) setAt(i); };
   const reset = () => { setAt(0); setPatient(null); setSearch(""); setReason(""); setOther(""); setDoctorId(""); };
@@ -133,9 +135,10 @@ export function BookingWizard({ me, doctors, nextFree, patients, moving, onDone,
     const req = moving
       ? api(`/appointments/${moving.id}/reschedule/`, { method: "POST", body: slot })
       : api("/appointments/", { method: "POST", body: { doctor: doctor.id, ...slot, reason: reasonText, ...(admin ? { patient: patient.id } : {}) } });
-    req.then(() => {
+    req.then((a) => {
       setPicked(null);
-      onDone(moving ? `Moved to ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)}.` : `Booked ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)} with ${doctor.name}.`);
+      const bill = a?.bill?.status === "pending" ? ` Invoice ${a.bill.number} (${price(a.bill.total)}) is ready: pay online or at the reception desk.` : "";
+      onDone(moving ? `Moved to ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)}.` : `Booked ${shortDay(slot.start_time)}, ${hhmm(slot.start_time)} with ${doctor.name}.${bill}`);
       if (!moving) reset();
     }).catch((e) => { setPicked(null); setErr(errorText(e)); setReload((n) => n + 1); }).finally(() => setBusy(false));
   };
@@ -191,6 +194,7 @@ export function BookingWizard({ me, doctors, nextFree, patients, moving, onDone,
                         onClick={() => { setReason(r.label); if (r.label !== "Other") next(); }}>
                   <span className="ap-card-icon"><Icon name={r.icon} /></span>
                   <b>{r.label}</b><small>{r.text}</small>
+                  {prices[r.label.toLowerCase()] && <span className="ap-price">{price(prices[r.label.toLowerCase()].price)}</span>}
                 </button>
               ))}
             </div>
@@ -249,14 +253,21 @@ export function BookingWizard({ me, doctors, nextFree, patients, moving, onDone,
           <Line name="Doctor" icon="stethoscope" label="Doctor" value={doctor?.name} />
           <Line name="Time" icon="calendar" label="Time" value={moving ? `Now ${when(moving)}` : null} />
         </ul>
-        <p className="ap-sum-note"><Icon name="clock" /> Visits are 30 minutes. You can reschedule or cancel later.</p>
+        {!moving && reason && (
+          <div className={`ap-cost ${cost ? "" : "none"}`}>
+            <span><small>Estimated cost</small><b>{cost ? price(cost.price) : "Priced at the clinic"}</b></span>
+            <p>{cost ? "An invoice is created when you book. Pay online or at the reception desk." : "There is no set price for this reason. The clinic adds the bill after the visit."}</p>
+          </div>
+        )}
+        <p className="ap-sum-note"><Icon name="clock" /> Visits are 30 minutes. You can reschedule or cancel later{cost ? "; an unpaid bill is cancelled with the visit" : ""}.</p>
       </aside>
 
       {picked && (
         <ConfirmDialog tone="primary" icon="calendar" cancelLabel="Pick another time" confirmLabel={busy ? "Booking…" : moving ? "Move appointment" : "Book visit"}
           title={moving ? "Move to this time?" : "Book this visit?"}
           message={`${longDay(picked.start_time)}, ${hhmm(picked.start_time)}–${hhmm(picked.end_time)} with ${doctor.name}` +
-            (moving ? "." : ` · ${reasonText}${admin && patient ? ` · for ${patient.name}` : ""}.`)}
+            (moving ? "." : ` · ${reasonText}${admin && patient ? ` · for ${patient.name}` : ""}.` +
+              (cost ? ` Estimated cost ${price(cost.price)}, paid after booking.` : ""))}
           onCancel={() => !busy && setPicked(null)} onConfirm={() => !busy && confirm()} />
       )}
     </div>

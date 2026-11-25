@@ -15,6 +15,9 @@ class Service(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     icd10_code = models.ForeignKey(ICD10Code, null=True, blank=True, on_delete=models.SET_NULL)
     is_active = models.BooleanField(default=True)
+    # The booking reason this service is charged for, e.g. "Chemotherapy session". Booking a visit with
+    # that reason shows this price and opens a pending invoice for it. Blank: not tied to a booking reason.
+    visit_reason = models.CharField(max_length=100, blank=True)
 
 
 class Invoice(models.Model):

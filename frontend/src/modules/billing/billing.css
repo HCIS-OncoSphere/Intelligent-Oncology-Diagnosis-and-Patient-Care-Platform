@@ -1,0 +1,79 @@
+/* Invoices tab, payment popup and the printable receipt. Built on the tokens in src/styles.css. */
+
+.bl-owed { display: flex; align-items: center; gap: 8px; border-left: 4px solid var(--accent); }
+.bl-owed b { color: var(--accent); font-size: 1.1rem; }
+.bl-new summary { cursor: pointer; font-weight: 700; }
+.bl-new[open] summary { margin-bottom: 12px; }
+.bl-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.bl-filters button { border-radius: 999px; min-height: 34px; padding: 5px 14px; font-size: .88rem; color: var(--muted); }
+.bl-filters button.on, .bl-filters button.on:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+
+/* payment popup (uses dialog.confirm from styles.css) */
+dialog.pay-dialog { width: min(420px, calc(100vw - 32px)); }
+dialog.pay-dialog > p { margin-bottom: 16px; }
+.pay-form { display: grid; gap: 12px; text-align: left; }
+.pay-form label { display: grid; margin: 0; }
+.pay-form input { width: 100%; }
+.pay-form .confirm-actions { margin-top: 6px; }
+.pay-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+.pay-note .icon { margin-top: 3px; color: var(--primary); }
+.pay-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.pay-methods button { border: 0; background: none; margin: 0; min-height: 34px; color: var(--muted); }
+.pay-methods button.on { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+
+/* ---------- receipt ---------- */
+.rc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.rc-actions .spacer { flex: 1; }
+.receipt {
+  position: relative; overflow: hidden; max-width: 820px; margin: 0 auto; padding: 36px 40px 28px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+}
+.receipt::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+.rc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+.rc-brand { display: flex; align-items: center; gap: 12px; }
+.rc-brand span { display: grid; }
+.rc-brand b { font-size: 1.2rem; }
+.rc-brand small { color: var(--muted); }
+.rc-title { text-align: right; display: grid; justify-items: end; gap: 4px; }
+.rc-title h2 { margin: 0; font-size: 1.5rem; letter-spacing: -.02em; }
+.rc-title > b { font-variant-numeric: tabular-nums; color: var(--muted); }
+.rc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; padding: 22px 0; }
+.rc-grid div { display: grid; gap: 2px; }
+.rc-grid small, .rc-payments > small { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rc-grid span { color: var(--muted); font-size: .9rem; }
+.rc-table { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; border-collapse: separate; border-spacing: 0; }
+.rc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.rc-table tbody tr:hover td { background: none; }
+.rc-bottom { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-top: 22px; }
+.rc-payments { flex: 1; min-width: 240px; }
+.rc-payments p { margin: 6px 0 0; font-size: .9rem; }
+.rc-totals { display: grid; grid-template-columns: auto auto; gap: 6px 28px; margin: 0; min-width: 240px; align-content: start; }
+.rc-totals dt { color: var(--muted); }
+.rc-totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.rc-totals .rc-due { font-size: 1.1rem; font-weight: 700; color: var(--text); padding-top: 8px; border-top: 1px solid var(--border); }
+.receipt.is-paid .rc-totals dd.rc-due { color: var(--ok); }
+.rc-stamp {
+  position: absolute; left: 50%; top: 40px; translate: -50% 0; padding: 6px 22px; transform: rotate(-12deg); pointer-events: none;
+  border: 4px solid var(--ok); border-radius: 12px; color: var(--ok); font-size: 2rem; font-weight: 800; letter-spacing: .2em; opacity: .22;
+}
+.rc-foot { margin-top: 28px; padding-top: 14px; border-top: 1px dashed var(--border); text-align: center; color: var(--muted); font-size: .85rem; }
+
+@media (max-width: 640px) {
+  .receipt { padding: 28px 18px 20px; }
+  .rc-title { text-align: left; justify-items: start; }
+  .rc-table th, .rc-table td { padding: 8px 6px; font-size: .84rem; }
+  .rc-stamp { display: none; }
+}
+@media (max-width: 900px) { .rc-stamp { display: none; } }
+
+/* printing: just the receipt, on white */
+@media print {
+  :root, :root[data-theme="dark"] {
+    --surface: #fff; --surface-2: #f3eefc; --bg: #fff; --border: #e4dcf0; --text: #1f1235; --muted: #6b5f80;
+    --primary: #4c1d95; --accent: #ea580c; --ok: #1f7a4d; --ok-soft: #e3f5ec; --info: #2b6cb0; --info-soft: #e6effa;
+    --logo-bg: #4c1d95;
+  }
+  .topbar, .page-hero, .rc-actions, .msg { display: none !important; }
+  body, .page { background: #fff !important; padding: 0 !important; }
+  .receipt { box-shadow: none; border: 0; max-width: none; color: #000; background: #fff; }
+}
