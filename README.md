@@ -78,19 +78,28 @@ cd Intelligent-Oncology-Diagnosis-and-Patient-Care-Platform
    pip install -r requirements.txt
    ```
 
-5. **Run database migrations:**
+5. **Connect to the team's Neon database (required):**
+   The whole team works on one shared Neon PostgreSQL database. Copy the template and paste
+   the `DATABASE_URL` the team lead sent you privately:
+   ```powershell
+   Copy-Item .env.example .env   # macOS / Linux: cp .env.example .env
+   ```
+   **Never commit `.env`**: this repository is public. Without it the backend refuses to start.
+   To work offline on a local SQLite file instead, put `USE_SQLITE=1` in `.env`.
+
+6. **Run database migrations:**
    ```bash
    python manage.py migrate
    ```
 
-6. **(Optional) Create an Admin superuser:**
+7. **(Optional) Create an Admin superuser:**
    To access the Django Admin portal and manage accounts via the admin role:
    ```bash
    python manage.py createsuperuser
    ```
    Follow the prompts to set username, email, and password.
 
-7. **Start the Django development server:**
+8. **Start the Django development server:**
    ```bash
    python manage.py runserver
    ```
@@ -185,7 +194,7 @@ Tests: `python manage.py test appointments reports`. Postman: `docs/postman/2_Ap
 
 ## ⚙️ Environment Configuration
 
-The application works out of the box with SQLite. For custom or production deployments, you can configure the following environment variables:
+The backend needs the shared Neon database (`DATABASE_URL` in `backend/.env`) unless `USE_SQLITE=1` is set. You can configure the following environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
@@ -193,7 +202,10 @@ The application works out of the box with SQLite. For custom or production deplo
 | `DEBUG` | `1` (True) | Set to `0` for production |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1,0.0.0.0` | Comma-separated list of allowed hostnames |
 | `CORS_ALLOWED_ORIGINS`| `http://localhost:5173,http://localhost:3000` | Comma-separated allowed frontend origins |
-| `DB_ENGINE` | `sqlite` | Set to `postgres` to use PostgreSQL |
+| `DATABASE_URL` | *(empty)* | Full Postgres URL (e.g. Neon's connection string). Wins over `DB_*`. Can live in `backend/.env` (see `backend/.env.example`) |
+| `USE_SQLITE` | `0` | Set to `1` to use a local SQLite file instead of Neon (offline work) |
+| `DB_ENGINE` | *(empty)* | Set to `postgres` to use PostgreSQL via the `DB_*` variables |
+| `DB_SSLMODE` | `prefer` | Use `require` for Neon when using `DB_*` variables |
 | `DB_NAME` | `oncosphere` | PostgreSQL database name |
 | `DB_USER` | `postgres` | PostgreSQL username |
 | `DB_PASSWORD` | `postgres` | PostgreSQL password |

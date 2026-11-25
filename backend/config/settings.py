@@ -1,8 +1,27 @@
+import getpass
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qsl, unquote, urlparse
+
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_env_file(path):
+    """Read KEY=VALUE lines from backend/.env into os.environ (real env vars win)."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_file(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me-please-use-a-long-random-key-123")
 DEBUG = os.getenv("DEBUG", "1") == "1"
 
@@ -65,8 +84,38 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# SQLite by default; set DB_ENGINE=postgres to use PostgreSQL
-if os.getenv("DB_ENGINE") == "postgres":
+# Database, in order of preference:
+#   1. DATABASE_URL (e.g. the Neon connection string, sslmode=require included)
+#   2. DB_ENGINE=postgres plus DB_* variables (DB_SSLMODE=require for Neon)
+#   3. SQLite, only when USE_SQLITE=1 (otherwise startup stops with an error,
+#      so nobody silently works on a private SQLite file instead of Neon)
+_database_url = os.getenv("DATABASE_URL", "").strip()
+if _database_url:
+    _url = urlparse(_database_url)
+    if _url.scheme not in ("postgres", "postgresql"):
+        raise ValueError("DATABASE_URL must start with postgres:// or postgresql://")
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(_url.path.lstrip("/")),
+            "USER": unquote(_url.username or ""),
+            "PASSWORD": unquote(_url.password or ""),
+            "HOST": _url.hostname or "",
+            "PORT": str(_url.port or 5432),
+            # Query params such as sslmode / channel_binding go straight to libpq.
+            "OPTIONS": dict(parse_qsl(_url.query)),
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+            "CONN_HEALTH_CHECKS": True,
+            # Neon's "-pooler" host is PgBouncer in transaction mode, which
+            # cannot hold Django's server-side cursors.
+            "DISABLE_SERVER_SIDE_CURSORS": "-pooler" in (_url.hostname or ""),
+        }
+    }
+    # Teammates share one Neon project, so give each person's `manage.py test`
+    # its own throwaway database instead of everyone fighting over test_neondb.
+    _who = "".join(c for c in getpass.getuser().lower() if c.isalnum()) or "dev"
+    DATABASES["default"]["TEST"] = {"NAME": f"test_{DATABASES['default']['NAME']}_{_who}"}
+elif os.getenv("DB_ENGINE") == "postgres":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -75,15 +124,24 @@ if os.getenv("DB_ENGINE") == "postgres":
             "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
+            "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "prefer")},
+            "DISABLE_SERVER_SIDE_CURSORS": "-pooler" in os.getenv("DB_HOST", ""),
         }
     }
-else:
+elif os.getenv("USE_SQLITE") == "1":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+else:
+    raise ImproperlyConfigured(
+        "No database configured. The team uses the shared Neon database:\n"
+        "  copy backend/.env.example to backend/.env and paste the DATABASE_URL\n"
+        "  the team lead sent you (never commit it - the repo is public).\n"
+        "To work offline on a local SQLite file instead, set USE_SQLITE=1."
+    )
 
 AUTH_USER_MODEL = "accounts.User"
 
