@@ -2,7 +2,8 @@
 import { useEffect, useRef } from "react";
 import { Icon } from "./Icon.jsx";
 
-export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message, confirmLabel, cancelLabel = "Cancel", onConfirm, onCancel }) {
+// `children` (optional) shows extra content under the message, e.g. a summary of what is being confirmed.
+export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message, confirmLabel, cancelLabel = "Cancel", onConfirm, onCancel, children }) {
   const ref = useRef(null);
   useEffect(() => {
     const d = ref.current;
@@ -16,6 +17,7 @@ export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message
       <span className={`confirm-icon ${tone}`}><Icon name={icon} /></span>
       <h2 id="confirm-title">{title}</h2>
       {message && <p id="confirm-text">{message}</p>}
+      {children}
       <div className="confirm-actions">
         <button type="button" data-cancel onClick={onCancel}>{cancelLabel}</button>
         <button type="button" className={tone === "danger" ? "confirm-danger" : "primary"} onClick={onConfirm}>{confirmLabel}</button>

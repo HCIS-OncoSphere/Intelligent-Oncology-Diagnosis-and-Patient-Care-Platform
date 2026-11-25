@@ -1,7 +1,7 @@
-// Booking in short steps: (Patient, for admins) → Reason → Doctor → Time, then a popup to confirm.
-// A summary on the side fills in as you go; click any filled line to go back and change it.
-// The same component moves an existing appointment (moving=appointment): then only the Time step shows.
-import { useEffect, useMemo, useState } from "react";
+// Booking: a narrow column of stacked choices on the left ((Patient, for admins) → Reason → Doctor), each a list of
+// small rows that folds into one line once chosen; the free times fill the wide panel on the right. A popup confirms.
+// The same component moves an existing appointment (moving=appointment): then only the time panel is used.
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api.js";
 import { Avatar } from "../../shared/Avatar.jsx";
 import { ConfirmDialog } from "../../shared/ConfirmDialog.jsx";
@@ -12,18 +12,38 @@ import { REASONS, addDays, hhmm, isYmd, longDay, mondayOf, parseYmd, shortDay, t
 
 const PARTS = [["Morning", 0, 12], ["Afternoon", 12, 17], ["Evening", 17, 24]];
 
-function Stepper({ steps, at, go }) {
+/** One choice of the booking column. Open: its rows slide down. Done: folds into one line; the up arrow (or a click
+ *  on the line) opens it again. Later: just its title. The body stays mounted so it can animate closed; `inert`
+ *  keeps a closed body out of the tab order. */
+function StackSection({ steps, at, goTo, name, n, title, value, children }) {
+  const i = steps.indexOf(name), open = i === at, done = i < at;
+  const ref = useRef(null), mounted = useRef(false);
+  // bring a section that just opened into view, after it has started to grow
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    if (!open) return;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => ref.current?.scrollIntoView({ block: "nearest", behavior: calm ? "auto" : "smooth" }), 180);
+    return () => clearTimeout(t);
+  }, [open]);
+  const reopen = () => goTo(name);
   return (
-    <ol className="ap-stepper">
-      {steps.map((s, i) => (
-        <li key={s} className={i < at ? "done" : i === at ? "now" : ""}>
-          <button type="button" disabled={i > at} onClick={() => go(i)} aria-current={i === at ? "step" : undefined}>
-            <span className="ap-step-dot">{i < at ? <Icon name="checkCircle" /> : i + 1}</span>
-            <span className="ap-step-label">{s}</span>
+    <section ref={ref} className={`ap-sec ${open ? "open" : ""} ${done ? "done" : ""}`}>
+      <header onClick={done ? reopen : undefined}>
+        <span className="ap-sec-n">{done ? <Icon name="checkCircle" /> : n}</span>
+        <span className="ap-sec-title"><b>{title}</b>{done && value && <small key={value}>{value}</small>}</span>
+        {done && (
+          <button type="button" className="ap-sec-up" aria-label={`Change ${title.toLowerCase()}`} title="Change"
+                  onClick={(e) => { e.stopPropagation(); reopen(); }}>
+            <Icon name="chevronUp" />
           </button>
-        </li>
-      ))}
-    </ol>
+        )}
+      </header>
+      {/* React 18 sets unknown attributes from strings; on React 19 this becomes inert={!open} */}
+      <div className="ap-sec-wrap" inert={open ? undefined : ""}>
+        <div className="ap-sec-inner"><div className="ap-sec-body">{children}</div></div>
+      </div>
+    </section>
   );
 }
 
@@ -143,132 +163,104 @@ export function BookingWizard({ me, doctors, nextFree, patients, prices = {}, mo
     }).catch((e) => { setPicked(null); setErr(errorText(e)); setReload((n) => n + 1); }).finally(() => setBusy(false));
   };
 
-  const Line = ({ name, icon, label, value }) => {
-    const reachable = steps.includes(name) && steps.indexOf(name) <= at;
-    return (
-      <li className={value ? "set" : ""}>
-        <span className="ap-sum-icon"><Icon name={icon} /></span>
-        <span><small>{label}</small>{value || <i>Not chosen yet</i>}</span>
-        {value && reachable && !moving && <button type="button" className="ghost sm" onClick={() => goTo(name)}>Change</button>}
-      </li>
-    );
-  };
-
   if (!doctors.length) return <p className="hint">No doctors yet. An admin creates a clinical user with a license number.</p>;
 
+  const sec = { steps, at, goTo };
+
   return (
-    <div className="ap-wizard">
-      <section className="ap-wiz-main card">
+    <div className="ap-book card">
         {moving ? (
-          <header className="ap-wiz-head">
-            <h2>Move your appointment</h2>
-            <p className="hint">Now: {when(moving)} with {moving.doctor_name}. Pick a new time below.</p>
-          </header>
-        ) : <Stepper steps={steps} at={at} go={setAt} />}
-
-        {err && <p className="msg err">{err}</p>}
-
-        {step === "Patient" && (
-          <div>
-            <h3 className="ap-q">Who is the visit for?</h3>
-            <input className="ap-search" type="search" placeholder="Search by name or MRN" value={search} autoFocus
-                   onChange={(e) => setSearch(e.target.value)} />
-            <div className="ap-pick-list">
-              {found.map((p) => (
-                <button type="button" key={p.id} className={patient?.id === p.id ? "on" : ""} onClick={() => { setPatient(p); next(); }}>
-                  <Avatar name={p.name} seed={p.id} size={36} />
-                  <span><b>{p.name || "(no name)"}</b><small>{p.mrn}</small></span>
-                </button>
-              ))}
-              {!found.length && <p className="hint">No patient matches “{search}”.</p>}
-            </div>
+          <div className="ap-moving">
+            <small>Moving</small>
+            <b>{moving.reason || "Visit"}</b>
+            <span>Now {when(moving)}</span>
+            <span>{moving.doctor_name}</span>
+            <button type="button" onClick={onStopMoving}>Keep the current time</button>
           </div>
-        )}
-
-        {step === "Reason" && (
-          <div>
-            <h3 className="ap-q">What is the visit for?</h3>
-            <div className="ap-cards">
-              {REASONS.map((r) => (
-                <button type="button" key={r.label} className={reason === r.label ? "on" : ""}
-                        onClick={() => { setReason(r.label); if (r.label !== "Other") next(); }}>
-                  <span className="ap-card-icon"><Icon name={r.icon} /></span>
-                  <b>{r.label}</b><small>{r.text}</small>
-                  {prices[r.label.toLowerCase()] && <span className="ap-price">{price(prices[r.label.toLowerCase()].price)}</span>}
-                </button>
-              ))}
-            </div>
-            {reason === "Other" && (
-              <div className="ap-other">
-                <input value={other} maxLength={200} autoFocus placeholder="e.g. new symptom since my last session"
-                       onChange={(e) => setOther(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
-                <button type="button" className="primary" onClick={next}>Next</button>
-              </div>
+        ) : (
+          <>
+            {admin && (
+              <StackSection {...sec} name="Patient" n={1} title="Patient" value={patient && `${patient.name} · ${patient.mrn}`}>
+                <input className="ap-search" type="search" placeholder="Search by name or MRN" value={search} autoFocus
+                       onChange={(e) => setSearch(e.target.value)} />
+                <div className="ap-rows">
+                  {found.map((p) => (
+                    <button type="button" key={p.id} className={patient?.id === p.id ? "on" : ""} onClick={() => { setPatient(p); next(); }}>
+                      <Avatar name={p.name} seed={p.id} size={26} />
+                      <span className="ap-row-text"><b>{p.name || "(no name)"}</b><small>{p.mrn}</small></span>
+                    </button>
+                  ))}
+                  {!found.length && <p className="hint">No patient matches “{search}”.</p>}
+                </div>
+              </StackSection>
             )}
-          </div>
-        )}
 
-        {step === "Doctor" && (
-          <div>
-            <h3 className="ap-q">Which doctor?</h3>
-            <div className="ap-cards ap-doctors">
-              {doctors.map((d) => {
-                const f = nextFree?.[d.id];
-                return (
-                  <button type="button" key={d.id} className={String(doctorId) === String(d.id) ? "on" : ""}
-                          onClick={() => { setDoctorId(String(d.id)); next(); }}>
-                    <Avatar name={d.name} seed={d.id} size={44} />
-                    <span className="ap-doc-text">
-                      <b>{d.name}</b><small>{d.specialty}</small>
-                      <span className={`ap-next ${f && !f.start_time ? "full" : ""}`}>
-                        <Icon name="clock" />
-                        {!nextFree ? "Checking…" : f?.start_time ? `First free: ${relDayOr(f.start_time)} · ${hhmm(f.start_time)}` : "Fully booked for 60 days"}
+            <StackSection {...sec} name="Reason" n={admin ? 2 : 1} title="Reason for the visit" value={reason && reasonText}>
+              <div className="ap-rows">
+                {REASONS.map((r) => {
+                  const p = prices[r.label.toLowerCase()];
+                  return (
+                    <button type="button" key={r.label} className={reason === r.label ? "on" : ""}
+                            onClick={() => { setReason(r.label); if (r.label !== "Other") next(); }}>
+                      <span className="ap-row-icon"><Icon name={r.icon} /></span>
+                      <span className="ap-row-text"><b>{r.label}</b><small>{r.text}</small></span>
+                      {p && <span className="ap-row-end">{price(p.price)}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {reason === "Other" && (
+                <div className="ap-other">
+                  <input value={other} maxLength={200} autoFocus placeholder="e.g. new symptom since my last session"
+                         onChange={(e) => setOther(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
+                  <button type="button" className="primary" onClick={next}>Next</button>
+                </div>
+              )}
+            </StackSection>
+
+            <StackSection {...sec} name="Doctor" n={admin ? 3 : 2} title="Doctor" value={doctor?.name}>
+              <div className="ap-rows">
+                {doctors.map((d) => {
+                  const f = nextFree?.[d.id];
+                  return (
+                    <button type="button" key={d.id} className={String(doctorId) === String(d.id) ? "on" : ""}
+                            onClick={() => { setDoctorId(String(d.id)); next(); }}>
+                      <Avatar name={d.name} seed={d.id} size={30} />
+                      <span className="ap-row-text"><b>{d.name}</b><small>{d.specialty}</small></span>
+                      <span className={`ap-next-wrap ${f && !f.start_time ? "full" : ""}`}>
+                        {!nextFree ? "…" : f?.start_time
+                          ? <>Next free: <strong>{relDayOr(f.start_time)} {hhmm(f.start_time)}</strong></>
+                          : "No availability"}
                       </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </StackSection>
+          </>
         )}
 
-        {step === "Time" && doctor && (
-          <div>
-            {!moving && <h3 className="ap-q">When suits you?</h3>}
-            <TimeStep key={doctor.id} doctor={doctor} firstFree={moving ? null : nextFree?.[doctor.id]} onPick={setPicked} reload={reload} />
-          </div>
-        )}
-
-        <footer className="ap-wiz-foot">
-          {moving ? <button type="button" onClick={onStopMoving}>Keep the current time</button>
-            : at > 0 ? <button type="button" onClick={() => setAt(at - 1)}>← Back</button> : <span />}
-        </footer>
-      </section>
-
-      <aside className="ap-summary card" aria-label="Summary">
-        <h3>{moving ? "Moving" : "Your visit"}</h3>
-        <ul>
-          {admin && !moving && <Line name="Patient" icon="user" label="Patient" value={patient && `${patient.name} · ${patient.mrn}`} />}
-          <Line name="Reason" icon="clipboard" label="Reason" value={moving ? moving.reason || "—" : reason && reasonText} />
-          <Line name="Doctor" icon="stethoscope" label="Doctor" value={doctor?.name} />
-          <Line name="Time" icon="calendar" label="Time" value={moving ? `Now ${when(moving)}` : null} />
-        </ul>
-        {!moving && reason && (
-          <div className={`ap-cost ${cost ? "" : "none"}`}>
-            <span><small>Estimated cost</small><b>{cost ? price(cost.price) : "Priced at the clinic"}</b></span>
-            <p>{cost ? "An invoice is created when you book. Pay online or at the reception desk." : "There is no set price for this reason. The clinic adds the bill after the visit."}</p>
-          </div>
-        )}
-        <p className="ap-sum-note"><Icon name="clock" /> Visits are 30 minutes. You can reschedule or cancel later{cost ? "; an unpaid bill is cancelled with the visit" : ""}.</p>
-      </aside>
+        <StackSection {...sec} name="Time" n={steps.length} title={moving ? "New time" : "Time"}>
+          {err && <p className="msg err">{err}</p>}
+          {doctor && <TimeStep key={doctor.id} doctor={doctor} firstFree={moving ? null : nextFree?.[doctor.id]} onPick={setPicked} reload={reload} />}
+          <p className="ap-sum-note"><Icon name="clock" /> {doctor?.name} · 30-minute visit. You can reschedule or cancel later{cost ? "; an unpaid bill is cancelled with the visit" : ""}.</p>
+        </StackSection>
 
       {picked && (
         <ConfirmDialog tone="primary" icon="calendar" cancelLabel="Pick another time" confirmLabel={busy ? "Booking…" : moving ? "Move appointment" : "Book visit"}
           title={moving ? "Move to this time?" : "Book this visit?"}
-          message={`${longDay(picked.start_time)}, ${hhmm(picked.start_time)}–${hhmm(picked.end_time)} with ${doctor.name}` +
-            (moving ? "." : ` · ${reasonText}${admin && patient ? ` · for ${patient.name}` : ""}.` +
-              (cost ? ` Estimated cost ${price(cost.price)}, paid after booking.` : ""))}
-          onCancel={() => !busy && setPicked(null)} onConfirm={() => !busy && confirm()} />
+          message={moving ? `From ${when(moving)}.` : "Check the details before you book."}
+          onCancel={() => !busy && setPicked(null)} onConfirm={() => !busy && confirm()}>
+          {/* the whole booking, seen once, right before it is made */}
+          <ul className="ap-confirm-sum">
+            {admin && patient && !moving && <li><Icon name="user" /><small>Patient</small><b>{patient.name} · {patient.mrn}</b></li>}
+            <li><Icon name="clipboard" /><small>Reason</small><b>{moving ? moving.reason || "—" : reasonText}</b></li>
+            <li><Icon name="stethoscope" /><small>Doctor</small><b>{doctor.name}</b></li>
+            <li><Icon name="calendar" /><small>When</small><b>{longDay(picked.start_time)}, {hhmm(picked.start_time)}–{hhmm(picked.end_time)}</b></li>
+            {!moving && <li className="cost"><Icon name="receipt" /><small>Cost</small><b>{cost ? price(cost.price) : "Priced at the clinic"}</b></li>}
+          </ul>
+          {!moving && <p className="ap-confirm-note">{cost ? "An invoice is created when you book. Pay online or at the reception desk." : "There is no set price for this reason; the clinic adds the bill after the visit."}</p>}
+        </ConfirmDialog>
       )}
     </div>
   );

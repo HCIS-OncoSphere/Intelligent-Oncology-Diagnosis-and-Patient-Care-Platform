@@ -66,8 +66,10 @@ function Appointments({ me }) {
         onDone={(inv) => { setPaying(null); changed(inv.status === "paid" ? `${inv.invoice_number} is paid. The receipt is in Invoices.` : `Payment saved on ${inv.invoice_number}.`); }} />}
 
       {moving ? (
-        <BookingWizard me={me} doctors={doctors} moving={moving}
-          onDone={(t) => { setMoving(null); changed(t); }} onStopMoving={() => setMoving(null)} />
+        <div className="ap-book-wrap">
+          <BookingWizard me={me} doctors={doctors} moving={moving}
+            onDone={(t) => { setMoving(null); changed(t); }} onStopMoving={() => setMoving(null)} />
+        </div>
       ) : (
         <>
           <div className="segmented ap-views" role="tablist">
@@ -80,8 +82,10 @@ function Appointments({ me }) {
           {view === "week" && <WeekCalendar {...props} />}
           {view === "list" && <AppointmentList {...props} onBook={canBook ? () => setView("book") : null} />}
           {view === "book" && canBook && (
-            <BookingWizard me={me} doctors={doctors} nextFree={nextFree} patients={patients} prices={prices}
-              onDone={(t) => { changed(t); if (!admin) setView("list"); }} />
+            <div className="ap-book-wrap">
+              <BookingWizard me={me} doctors={doctors} nextFree={nextFree} patients={patients} prices={prices}
+                onDone={(t) => { changed(t); if (!admin) setView("list"); }} />
+            </div>
           )}
           {view === "hours" && <Availability me={me} doctors={doctors} reloadDoctors={loadDoctors} />}
           {view === "reminders" && (
