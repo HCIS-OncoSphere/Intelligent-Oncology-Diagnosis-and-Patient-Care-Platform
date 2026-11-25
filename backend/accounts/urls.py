@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .profile import ProfilePhotoView, ProfileView
 from .serializers import LoginSerializer
 from .doctors import AdminDoctorCreateView, DoctorRegisterView, DoctorRequestViewSet
+from .password_reset import ForgotPasswordView, ResetPasswordView
 from .views import (
     ChangePasswordView, GoogleAuthView, MeView, NotificationView, RegisterView, UserViewSet,
 )
@@ -18,6 +19,8 @@ urlpatterns = [
     path("auth/google/", GoogleAuthView.as_view(), name="google-auth"),
     path("auth/register/doctor/", DoctorRegisterView.as_view(), name="register-doctor"),
     path("auth/change-password/", ChangePasswordView.as_view(), name="change-password"),
+    path("auth/forgot-password/", ForgotPasswordView.as_view(), name="forgot-password"),
+    path("auth/reset-password/", ResetPasswordView.as_view(), name="reset-password"),
     path("notifications/", NotificationView.as_view(), name="notifications"),
     path("admin/doctors/", AdminDoctorCreateView.as_view(), name="admin-doctor-create"),
     path("auth/login/", TokenObtainPairView.as_view(serializer_class=LoginSerializer), name="token_obtain_pair"),

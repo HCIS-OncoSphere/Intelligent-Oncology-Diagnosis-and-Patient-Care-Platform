@@ -109,3 +109,25 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+
+
+class PasswordResetToken(models.Model):
+    """Single-use token that lets a user reset their password without being logged in."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name="password_reset_tokens")
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        if self.used:
+            return False
+        return timezone.now() <= self.created_at + timedelta(hours=2)
+
+    def __str__(self):
+        return f"Reset token for {self.user.username} ({'used' if self.used else 'active'})"

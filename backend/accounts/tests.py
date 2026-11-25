@@ -178,3 +178,62 @@ class AccountsUserManagementTests(AccountsTestBase):
         self.assertEqual(res.status_code, 200)
         self.patient_user.refresh_from_db()
         self.assertFalse(self.patient_user.is_active)
+
+
+class PasswordResetTests(AccountsTestBase):
+    def test_forgot_password_known_user(self):
+        from accounts.models import PasswordResetToken
+        from django.core import mail
+        mail.outbox = []
+        res = self.client.post("/api/auth/forgot-password/", {"email": self.patient_user.email}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(PasswordResetToken.objects.filter(user=self.patient_user, used=False).exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("/reset-password?token=", mail.outbox[0].body)
+
+    def test_forgot_password_doctor_user(self):
+        from accounts.models import PasswordResetToken
+        from django.core import mail
+        mail.outbox = []
+        res = self.client.post("/api/auth/forgot-password/", {"email": self.clinical_user.email}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(PasswordResetToken.objects.filter(user=self.clinical_user, used=False).exists())
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_forgot_password_unknown_email_returns_200(self):
+        from accounts.models import PasswordResetToken
+        initial = PasswordResetToken.objects.count()
+        res = self.client.post("/api/auth/forgot-password/", {"email": "does_not_exist@test.com"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(PasswordResetToken.objects.count(), initial)
+
+    def test_reset_password_flow(self):
+        from accounts.models import PasswordResetToken
+        # Request reset
+        self.client.post("/api/auth/forgot-password/", {"email": self.patient_user.email}, format="json")
+        token_obj = PasswordResetToken.objects.filter(user=self.patient_user, used=False).first()
+        self.assertIsNotNone(token_obj)
+
+        # Submit new password
+        new_pwd = "BrandNewPassword123!"
+        res = self.client.post("/api/auth/reset-password/", {
+            "token": token_obj.token,
+            "new_password": new_pwd,
+        }, format="json")
+        self.assertEqual(res.status_code, 200)
+
+        # Token is now used
+        token_obj.refresh_from_db()
+        self.assertTrue(token_obj.used)
+
+        # Trying to reuse token fails
+        res_reuse = self.client.post("/api/auth/reset-password/", {
+            "token": token_obj.token,
+            "new_password": "AnotherPassword123!",
+        }, format="json")
+        self.assertEqual(res_reuse.status_code, 400)
+
+        # Old password fails, new password works
+        self.assertIsNone(self.login_user("patient_test", "PatientPassword123!"))
+        token = self.login_user("patient_test", new_pwd)
+        self.assertIsNotNone(token)

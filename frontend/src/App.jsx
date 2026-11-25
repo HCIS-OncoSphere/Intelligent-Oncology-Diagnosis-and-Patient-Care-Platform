@@ -12,6 +12,8 @@ import Home from "./shell/Home.jsx";
 import Login from "./shell/Login.jsx";
 import ForcePassword from "./shell/ForcePassword.jsx";
 import Register from "./shell/Register.jsx";
+import ForgotPassword from "./shell/ForgotPassword.jsx";
+import ResetPassword from "./shell/ResetPassword.jsx";
 import { Bell } from "./shared/Bell.jsx";
 
 // Each module default-exports { id, label, order, roles, Component }.
@@ -100,6 +102,8 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register onDone={setMe} />} />
       <Route path="/register/doctor" element={<Navigate to="/register?role=doctor" replace />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={<Login onDone={setMe} />} />
     </Routes>
   );

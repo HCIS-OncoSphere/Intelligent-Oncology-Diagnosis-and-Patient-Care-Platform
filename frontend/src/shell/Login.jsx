@@ -43,7 +43,11 @@ export default function Login({ onDone }) {
                    autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus required />
         <PasswordField label="Password" value={cred.password} onChange={set("password")}
                        autoComplete="current-password" required />
-        <p className="auth-note">Forgot your password? Ask your clinic's administrator to reset it.</p>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-6px" }}>
+          <Link to="/forgot-password" style={{ fontSize: "0.85rem", color: "var(--primary)", textDecoration: "none" }}>
+            Forgot password?
+          </Link>
+        </div>
         <SubmitButton busy={busy} busyText="Signing in…">Sign in</SubmitButton>
       </form>
 
