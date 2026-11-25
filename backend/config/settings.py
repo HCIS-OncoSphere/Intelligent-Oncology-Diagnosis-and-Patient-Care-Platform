@@ -104,13 +104,30 @@ if _database_url:
             "PORT": str(_url.port or 5432),
             # Query params such as sslmode / channel_binding go straight to libpq.
             "OPTIONS": dict(parse_qsl(_url.query)),
-            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+            # Opening a connection to Neon (TCP + TLS + SCRAM login) takes ~1 s from
+            # Egypt. A connection pool (psycopg 3) opens a few once and every request
+            # borrows one, even under `runserver`. `runserver` starts a new thread per
+            # request, so CONN_MAX_AGE alone would reconnect every time. Django
+            # requires CONN_MAX_AGE = 0 when pooling. Set DB_POOL=0 to turn the pool off.
+            "CONN_MAX_AGE": 0,
+            # With the pool on, this makes the pool test a connection before handing
+            # it out (one quick round trip), so a connection Neon dropped while
+            # idle is replaced instead of failing the request.
             "CONN_HEALTH_CHECKS": True,
             # Neon's "-pooler" host is PgBouncer in transaction mode, which
             # cannot hold Django's server-side cursors.
             "DISABLE_SERVER_SIDE_CURSORS": "-pooler" in (_url.hostname or ""),
         }
     }
+    if os.getenv("DB_POOL", "1") != "0":
+        DATABASES["default"]["OPTIONS"]["pool"] = {
+            "min_size": 1,   # keep one connection open and ready
+            "max_size": int(os.getenv("DB_POOL_MAX", "4")),  # several teammates share Neon's connection limit
+            "max_idle": 240,  # close spare idle connections before Neon suspends the compute (5 min)
+            "timeout": 30,    # seconds to wait for a free connection before erroring
+        }
+    else:
+        DATABASES["default"]["CONN_MAX_AGE"] = int(os.getenv("DB_CONN_MAX_AGE", "60"))
     # Teammates share one Neon project, so give each person's `manage.py test`
     # its own throwaway database instead of everyone fighting over test_neondb.
     _who = "".join(c for c in getpass.getuser().lower() if c.isalnum()) or "dev"
@@ -144,6 +161,18 @@ else:
     )
 
 AUTH_USER_MODEL = "accounts.User"
+
+# Argon2 first: Django's recommended hasher. It takes ~50-100 ms per password here,
+# where the default PBKDF2 (1M iterations) took ~2 s on each sign-up and each login.
+# The others stay listed so passwords saved earlier with PBKDF2 still work; Django
+# re-hashes them with Argon2 the next time each user logs in.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
 
 # Password rules = the ones shown on the sign-up page: at least 8 characters, not only numbers.
 # (No "too similar to your username" / "too common" checks: their messages confused users.)

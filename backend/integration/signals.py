@@ -10,6 +10,10 @@ from .dispatch import dispatch, patient_fields
 
 def _safe(fn):
     def wrapper(*a, **kw):
+        # raw=True means `loaddata` is restoring saved rows (e.g. a database copy):
+        # those HL7 messages were already sent and are in the copy, so don't send new ones.
+        if kw.get("raw"):
+            return
         try:
             fn(*a, **kw)
         except Exception:  # integration must never break clinical workflows

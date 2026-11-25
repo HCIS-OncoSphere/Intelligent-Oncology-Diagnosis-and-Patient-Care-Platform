@@ -15,6 +15,8 @@ db.sqlite3
 # Environment & Secrets
 .env
 .env.local
+# Database copies (real patient data + password hashes) made when moving Neon regions
+backend/neon_backup*.json
 *.log
 
 # Node & Frontend

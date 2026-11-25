@@ -77,6 +77,8 @@ cd Intelligent-Oncology-Diagnosis-and-Patient-Care-Platform
    ```bash
    pip install -r requirements.txt
    ```
+   Already set up from before? Run it again: the backend now uses `psycopg` 3 (for its
+   connection pool) instead of `psycopg2`, and `argon2-cffi` for password hashing.
 
 5. **Connect to the team's Neon database (required):**
    The whole team works on one shared Neon PostgreSQL database. Copy the template and paste
@@ -204,6 +206,9 @@ The backend needs the shared Neon database (`DATABASE_URL` in `backend/.env`) un
 | `CORS_ALLOWED_ORIGINS`| `http://localhost:5173,http://localhost:3000` | Comma-separated allowed frontend origins |
 | `DATABASE_URL` | *(empty)* | Full Postgres URL (e.g. Neon's connection string). Wins over `DB_*`. Can live in `backend/.env` (see `backend/.env.example`) |
 | `USE_SQLITE` | `0` | Set to `1` to use a local SQLite file instead of Neon (offline work) |
+| `DB_POOL` | `1` | Connection pool for `DATABASE_URL`: connections to Neon are opened once and reused, instead of a ~1 s reconnect on every request. Set `0` to turn it off |
+| `DB_POOL_MAX` | `4` | Most connections one backend process keeps open to Neon |
+| `DB_CONN_MAX_AGE` | `60` | Only used when `DB_POOL=0` |
 | `DB_ENGINE` | *(empty)* | Set to `postgres` to use PostgreSQL via the `DB_*` variables |
 | `DB_SSLMODE` | `prefer` | Use `require` for Neon when using `DB_*` variables |
 | `DB_NAME` | `oncosphere` | PostgreSQL database name |
@@ -214,3 +219,28 @@ The backend needs the shared Neon database (`DATABASE_URL` in `backend/.env`) un
 | `HL7_ENABLED` | `0` | Set `1` to enable HL7 MLLP link |
 | `HL7_HOST` | `127.0.0.1` | HL7 server address |
 | `HL7_PORT` | `2575` | HL7 MLLP port |
+
+### Moving the shared database to a closer Neon region
+
+The current Neon project is in `us-east-2` (Ohio), so every query from Egypt takes ~160 ms
+there and back, and a sign-up makes about 12 of them. A Neon project's region cannot be
+changed afterwards, so moving means a new project plus a copy of the data. One person does
+this once, for everyone:
+
+1. In the Neon console, create a **new project** in **AWS Europe Central 1 (Frankfurt)** with
+   the same Postgres version. Copy its **pooled** connection string (host contains `-pooler`).
+2. Add it to `backend/.env` as a new line, keeping the existing `DATABASE_URL` as it is:
+   ```
+   NEW_DATABASE_URL=postgresql://...-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+   ```
+3. Ask the team to stop using the app, then run from the repo root:
+   ```powershell
+   backend\.venv\Scripts\python.exe scripts\move_neon_region.py
+   ```
+   The script checks that the new database is empty, copies every row across, and compares
+   row counts table by table. Only if they all match does it switch `backend/.env` to the new
+   database (the old URL stays there as a comment). The old database is never changed, so a
+   failed run can be retried.
+4. Restart `runserver`, log in to check, and send the new `DATABASE_URL` to the team privately.
+   Delete `backend/neon_backup.json` when you're sure (real patient data; it is git-ignored).
+   Keep the old Neon project for a few days in case anything is missing, then delete it.

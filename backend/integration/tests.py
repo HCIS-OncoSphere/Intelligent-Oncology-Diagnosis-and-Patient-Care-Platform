@@ -27,6 +27,21 @@ class Hl7Tests(BaseCase):
         self.assertEqual(m.status, "queued")          # HL7_ENABLED is off by default
         self.assertTrue(h.validate(m.raw_message)[0])
 
+    def test_loaddata_does_not_send_new_messages(self):
+        # Restoring a database copy (dumpdata -> loaddata) must not create duplicate HL7 messages.
+        import json, os, tempfile
+        from django.core import serializers
+        from django.core.management import call_command
+        data = serializers.serialize("json", type(self.pt1).objects.filter(pk=self.pt1.pk))
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
+            f.write(data)
+        try:
+            before = Hl7Message.objects.count()
+            call_command("loaddata", f.name, verbosity=0)
+            self.assertEqual(Hl7Message.objects.count(), before)
+        finally:
+            os.remove(f.name)
+
     def test_profile_update_logs_adt_a08(self):
         self.as_p1()
         self.c.patch(f"/api/patients/{self.pt1.id}/", dict(address="Cairo"), format="json")
