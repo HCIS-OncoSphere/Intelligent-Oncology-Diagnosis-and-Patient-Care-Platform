@@ -2,7 +2,8 @@
 
 Endpoints (all under /api/):
   doctors/                       GET list, GET {id}/          logged in
-  doctors/{id}/slots/?date=      GET free slots for one day   logged in
+  doctors/{id}/slots/?date=      GET free slots for one day (&days=7 for a week)   logged in
+  doctors/next-free/             GET each doctor's first free slot   logged in
   availability/                  GET (all) / POST, PATCH, DELETE (admins: any doctor, doctors: their own)
   appointments/                  GET (scoped), POST (patients for themselves, admins for a patient)
   appointments/{id}/             GET, PATCH, PUT (scoped), DELETE (staff)
@@ -127,13 +128,48 @@ class DoctorSerializer(serializers.ModelSerializer):
         return bool(req and obj.user_id == req.user.id)
 
 
+NEXT_FREE_DAYS = 60  # how far ahead "first free time" looks
+
+
+def free_slots(doctor, first_day, days=1, minutes=30, booked=None, limit=None):
+    """Free slots of one doctor from first_day for `days` days, in time order.
+
+    `doctor.availability` should be prefetched. `booked` is a list of (start, end) of the doctor's
+    non-cancelled appointments covering the period; it is read from the database when not given.
+    `limit` stops early (1 = only the first free slot)."""
+    windows = sorted(doctor.availability.all(), key=lambda w: w.start_time)
+    tz = timezone.get_current_timezone()
+    period_start = timezone.make_aware(datetime.combine(first_day, time.min), tz)
+    period_end = period_start + timedelta(days=days)
+    if booked is None:
+        booked = list(Appointment.objects.filter(doctor=doctor, start_time__lt=period_end, end_time__gt=period_start)
+                      .exclude(status=Appointment.Status.CANCELLED).values_list("start_time", "end_time"))
+    now, step, free = timezone.now(), timedelta(minutes=minutes), []
+    for offset in range(days):
+        day = first_day + timedelta(days=offset)
+        # no availability rows means any time is allowed: offer the default clinic day
+        todays = [w for w in windows if w.day_of_week == day.weekday()] if windows else \
+            [DoctorAvailability(day_of_week=day.weekday(), start_time=time(9), end_time=time(17))]
+        for w in todays:
+            s = timezone.make_aware(datetime.combine(day, w.start_time), tz)
+            end = timezone.make_aware(datetime.combine(day, w.end_time), tz)
+            while s + step <= end:
+                e = s + step
+                if s >= now and not any(bs < e and be > s for bs, be in booked):
+                    free.append({"start_time": s.isoformat(), "end_time": e.isoformat()})
+                    if limit and len(free) >= limit:
+                        return free
+                s = e
+    return free
+
+
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Doctor.objects.select_related("user").prefetch_related("availability").order_by("id")
     serializer_class = DoctorSerializer
 
     @action(detail=True, methods=["get"])
     def slots(self, request, pk=None):
-        """Free booking slots of this doctor on one day: ?date=YYYY-MM-DD&minutes=30"""
+        """Free booking slots of this doctor: ?date=YYYY-MM-DD&minutes=30, and &days=7 for a whole week."""
         doctor = self.get_object()
         day = parse_date(request.query_params.get("date", "") or "")
         if day is None:
@@ -144,26 +180,30 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             minutes = 0
         if not 5 <= minutes <= 240:
             return Response({"minutes": ["Must be a number between 5 and 240."]}, status=400)
+        days = request.query_params.get("days", "1")
+        if not days.isdigit() or not 1 <= int(days) <= 31:
+            return Response({"days": ["Must be a number between 1 and 31."]}, status=400)
+        return Response({"doctor": doctor.id, "date": day.isoformat(), "minutes": minutes,
+                         "slots": free_slots(doctor, day, int(days), minutes)})
 
-        windows = doctor.availability.filter(day_of_week=day.weekday())
-        if not doctor.availability.exists():
-            # no availability rows means any time is allowed: offer the default clinic day
-            windows = [DoctorAvailability(doctor=doctor, day_of_week=day.weekday(), start_time=time(9), end_time=time(17))]
+    @action(detail=False, methods=["get"], url_path="next-free")
+    def next_free(self, request):
+        """Each doctor's first free 30-minute slot in the next 60 days (null when fully booked):
+        [{"doctor": id, "start_time": ..., "end_time": ...}]. Two queries, whatever the number of doctors."""
+        doctors = list(self.get_queryset())
+        today = timezone.localdate()
         tz = timezone.get_current_timezone()
-        day_start = timezone.make_aware(datetime.combine(day, time.min), tz)
-        booked = list(Appointment.objects.filter(doctor=doctor, start_time__lt=day_start + timedelta(days=1),
-                                                 end_time__gt=day_start)
-                      .exclude(status=Appointment.Status.CANCELLED).values_list("start_time", "end_time"))
-        now, step, free = timezone.now(), timedelta(minutes=minutes), []
-        for w in windows:
-            s = timezone.make_aware(datetime.combine(day, w.start_time), tz)
-            end = timezone.make_aware(datetime.combine(day, w.end_time), tz)
-            while s + step <= end:
-                e = s + step
-                if s >= now and not any(bs < e and be > s for bs, be in booked):
-                    free.append({"start_time": s.isoformat(), "end_time": e.isoformat()})
-                s = e
-        return Response({"doctor": doctor.id, "date": day.isoformat(), "minutes": minutes, "slots": free})
+        start = timezone.make_aware(datetime.combine(today, time.min), tz)
+        booked = {}
+        for d, s, e in (Appointment.objects.filter(doctor__in=doctors, start_time__lt=start + timedelta(days=NEXT_FREE_DAYS),
+                                                   end_time__gt=start)
+                        .exclude(status=Appointment.Status.CANCELLED).values_list("doctor_id", "start_time", "end_time")):
+            booked.setdefault(d, []).append((s, e))
+        out = []
+        for doctor in doctors:
+            first = free_slots(doctor, today, NEXT_FREE_DAYS, booked=booked.get(doctor.id, []), limit=1)
+            out.append({"doctor": doctor.id, **(first[0] if first else {"start_time": None, "end_time": None})})
+        return Response(out)
 
 
 class AvailabilityViewSet(viewsets.ModelViewSet):
@@ -291,6 +331,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     """Patients see and manage only their own bookings; staff see everything.
 
     Filters: ?status=scheduled  ?doctor=<id>  ?patient=<id> (staff)  ?date=YYYY-MM-DD  ?upcoming=1
+             ?from=YYYY-MM-DD&to=YYYY-MM-DD (a period, both days included)
     """
     serializer_class = AppointmentSerializer
 
@@ -318,10 +359,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=status)
         if doctor is not None:
             qs = qs.filter(doctor_id=doctor)
+        tz = timezone.get_current_timezone()
         if day:
-            tz = timezone.get_current_timezone()
             s = timezone.make_aware(datetime.combine(day, time.min), tz)
             qs = qs.filter(start_time__gte=s, start_time__lt=s + timedelta(days=1))
+        # a period, both days included (the week calendar): ?from=YYYY-MM-DD&to=YYYY-MM-DD
+        first, last = date_param(p, "from"), date_param(p, "to")
+        if first:
+            qs = qs.filter(start_time__gte=timezone.make_aware(datetime.combine(first, time.min), tz))
+        if last:
+            qs = qs.filter(start_time__lt=timezone.make_aware(datetime.combine(last + timedelta(days=1), time.min), tz))
         if p.get("upcoming") in ("1", "true"):
             qs = qs.filter(start_time__gte=timezone.now(), status=Appointment.Status.SCHEDULED)
         return qs

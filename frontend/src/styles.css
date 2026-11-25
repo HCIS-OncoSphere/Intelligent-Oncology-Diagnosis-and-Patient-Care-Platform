@@ -134,6 +134,8 @@ dialog.confirm::backdrop { background: rgba(15, 31, 46, .45); backdrop-filter: b
 @media (prefers-reduced-motion: reduce) { dialog.confirm[open] { animation: none; } }
 .confirm-icon { width: 52px; height: 52px; margin: 0 auto 14px; border-radius: 16px; display: grid; place-items: center; }
 .confirm-icon.danger { color: var(--danger); background: var(--danger-soft); }
+.confirm-icon.primary { color: var(--primary); background: var(--primary-soft); }
+.confirm-icon.ok { color: var(--ok); background: var(--ok-soft); }
 .confirm-icon .icon { width: 24px; height: 24px; }
 dialog.confirm h2 { font-size: 1.15rem; margin: 0 0 6px; }
 dialog.confirm p { color: var(--muted); margin: 0; font-size: .92rem; }

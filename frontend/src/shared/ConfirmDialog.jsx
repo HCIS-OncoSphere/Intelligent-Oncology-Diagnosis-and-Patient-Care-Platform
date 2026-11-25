@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Icon } from "./Icon.jsx";
 
-export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message, confirmLabel, onConfirm, onCancel }) {
+export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message, confirmLabel, cancelLabel = "Cancel", onConfirm, onCancel }) {
   const ref = useRef(null);
   useEffect(() => {
     const d = ref.current;
@@ -17,7 +17,7 @@ export function ConfirmDialog({ icon = "logOut", tone = "danger", title, message
       <h2 id="confirm-title">{title}</h2>
       {message && <p id="confirm-text">{message}</p>}
       <div className="confirm-actions">
-        <button type="button" data-cancel onClick={onCancel}>Cancel</button>
+        <button type="button" data-cancel onClick={onCancel}>{cancelLabel}</button>
         <button type="button" className={tone === "danger" ? "confirm-danger" : "primary"} onClick={onConfirm}>{confirmLabel}</button>
       </div>
     </dialog>

@@ -243,6 +243,57 @@ class RescheduleAndSlotTests(AppointmentBase):
         self.assertIn("09:30", starts)
         self.assertEqual(self.client.get(f"/api/doctors/{self.doctor.id}/slots/?date=bad").status_code, 400)
 
+    def test_week_of_slots_in_one_request(self):
+        self.as_p1()
+        monday = next_weekday_at(10).date()
+        monday -= timedelta(days=monday.weekday())
+        if monday <= timezone.localdate():
+            monday += timedelta(days=7)  # a week fully in the future, so no slot has passed yet
+        r = self.client.get(f"/api/doctors/{self.doctor.id}/slots/?date={monday.isoformat()}&days=7")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data["slots"]), 5 * 16)  # Monday-Friday, 16 half-hours each; no weekend hours
+        for bad in ("0", "32", "x"):
+            self.assertEqual(self.client.get(f"/api/doctors/{self.doctor.id}/slots/?date={monday}&days={bad}").status_code, 400)
+
+    def test_next_free_skips_booked_slots(self):
+        self.as_p1()
+        r = self.client.get("/api/doctors/next-free/")
+        self.assertEqual(r.status_code, 200)
+        first = r.data[0]
+        self.assertEqual(first["doctor"], self.doctor.id)
+        start = timezone.datetime.fromisoformat(first["start_time"])
+        self.assertEqual(self.book(start).status_code, 201)
+        again = self.client.get("/api/doctors/next-free/").data[0]
+        self.assertGreater(timezone.datetime.fromisoformat(again["start_time"]), start)
+
+    def test_next_free_is_null_when_fully_booked(self):
+        DoctorAvailability.objects.filter(doctor=self.doctor).delete()
+        DoctorAvailability.objects.create(doctor=self.doctor, day_of_week=0, start_time=time(9), end_time=time(9, 30))
+        tz = timezone.get_current_timezone()
+        day = timezone.localdate()
+        for _ in range(70):  # every Monday 09:00 in the window is taken
+            if day.weekday() == 0:
+                s = timezone.make_aware(timezone.datetime.combine(day, time(9)), tz)
+                Appointment.objects.create(patient=self.patient_profile_2, doctor=self.doctor, booked_by=self.admin_user,
+                                           start_time=s, end_time=s + timedelta(minutes=30))
+            day += timedelta(days=1)
+        self.as_p1()
+        self.assertIsNone(self.client.get("/api/doctors/next-free/").data[0]["start_time"])
+
+    def test_period_filter(self):
+        self.as_doctor()
+        tomorrow = timezone.localtime() + timedelta(days=1)
+        for days in (1, 3, 9):
+            s = tomorrow + timedelta(days=days - 1)
+            Appointment.objects.create(patient=self.patient_profile_1, doctor=self.doctor, booked_by=self.clinical_user,
+                                       start_time=s, end_time=s + timedelta(minutes=30))
+        first = tomorrow.date()
+        last = first + timedelta(days=6)
+        r = self.client.get(f"/api/appointments/?from={first}&to={last}")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data), 2)  # the one 9 days out is outside the week
+        self.assertEqual(self.client.get("/api/appointments/?from=2026-02-30").status_code, 400)
+
     def test_filters_and_reminders(self):
         self.as_doctor()
         tomorrow = timezone.localtime() + timedelta(days=1)
