@@ -159,12 +159,38 @@ a.user-link { display: flex; align-items: center; gap: 10px; color: inherit; tex
 a.user-link:hover, a.user-link.active { background: var(--primary-soft); }
 a.user-link:focus-visible { outline: none; box-shadow: var(--focus); }
 /* tabs are pills; the current page's pill is mint */
-.tabs { padding: 2px var(--gutter) 12px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-.tab { border: 0; background: none; border-radius: 999px; padding: 7px 16px; min-height: 0; color: var(--muted); font-weight: 600; white-space: nowrap; box-shadow: none; }
-a.tab { display: inline-flex; align-items: center; text-decoration: none; }
-.tab:hover { color: var(--text); background: var(--surface-2); }
-.tab.active, .tab.active:hover { color: var(--primary); background: var(--primary-soft); }
-a.tab:focus-visible { outline: none; box-shadow: var(--focus); }
+/* sidebar (App.jsx): open by default on a wide screen, a slide-in drawer on a phone */
+:root { --topbar-h: 76px; --sidebar-w: 248px; }
+.nav-toggle { color: var(--text); margin-left: -6px; }
+a.brand { color: inherit; text-decoration: none; }
+.shell { display: flex; align-items: flex-start; min-height: calc(100vh - var(--topbar-h)); }
+.shell main { flex: 1; min-width: 0; }
+.sidebar {
+  position: sticky; top: var(--topbar-h); align-self: flex-start; flex: none; width: 0; overflow: hidden; visibility: hidden;
+  height: calc(100vh - var(--topbar-h)); background: var(--surface); border-right: 1px solid var(--border);
+  transition: width .2s ease, visibility .2s; display: flex; flex-direction: column; gap: 4px;
+}
+.shell.nav-open .sidebar { width: var(--sidebar-w); visibility: visible; padding: 16px 12px; overflow-y: auto; }
+.side-link {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: var(--muted);
+  font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.side-link:hover { color: var(--text); background: var(--surface-2); }
+.side-link.active, .side-link.active:hover { color: var(--primary); background: var(--primary-soft); }
+.side-link:focus-visible { outline: none; box-shadow: var(--focus); }
+.side-link .icon { flex: none; }
+.side-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin: 0 7px; flex: none; }
+.scrim { display: none; }
+.side-foot { display: none; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+button.side-link { border: 0; background: none; width: 100%; margin: 0; min-height: 0; box-shadow: none; text-align: left; font: inherit; font-weight: 600; cursor: pointer; }
+@media (max-width: 900px) {
+  .side-foot { display: block; }
+  .sidebar { position: fixed; left: 0; top: var(--topbar-h); z-index: 20; width: var(--sidebar-w); height: calc(100dvh - var(--topbar-h));
+    transform: translateX(-100%); visibility: hidden; padding: 16px 12px; box-shadow: var(--shadow); transition: transform .2s ease, visibility .2s; }
+  .shell.nav-open .sidebar { transform: none; visibility: visible; }
+  .shell.nav-open .scrim { display: block; position: fixed; inset: var(--topbar-h) 0 0 0; z-index: 15; background: rgba(0, 0, 0, .35); }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
 .page { padding: 24px var(--gutter) 64px; }
 
 /* teal banner behind each page title */
@@ -288,7 +314,9 @@ button.icon-btn:disabled { opacity: 1; cursor: progress; }
 @media (max-width: 640px) {
   .page { padding: 16px var(--gutter) 48px; }
   .page-hero-in { padding: 22px var(--gutter) 24px; }
-  .topbar-in { min-height: 64px; }
+  :root { --topbar-h: 64px; }
+  .topbar-in { min-height: 64px; flex-wrap: nowrap; gap: 8px; }
+  .user-chip .sm { display: none; }
   .topbar .brand { font-size: 1.3rem; }
   .topbar .brand-mark { width: 40px; height: 40px; border-radius: 12px; }
   .topbar .brand-mark svg { width: 25px; height: 25px; }
@@ -317,3 +345,5 @@ button.icon-btn:disabled { opacity: 1; cursor: progress; }
 .tab-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--danger); color: #fff; font-size: .7rem; font-weight: 700; }
 .secret-box { border: 1px dashed var(--primary); border-radius: 10px; padding: 12px 14px; background: var(--primary-soft); margin-top: 10px; }
 .secret-box code { font-size: 1.1rem; user-select: all; }
+
+@media (max-width: 480px) { .topbar .brand-name { display: none; } }

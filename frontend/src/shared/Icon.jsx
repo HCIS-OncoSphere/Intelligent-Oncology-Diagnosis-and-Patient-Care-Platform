@@ -41,6 +41,7 @@ const PATHS = {
   receipt: "M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2zM8 8h8M8 12h8M8 16h5",
   link: "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",
   arrowRight: "M5 12h14M13 6l6 6-6 6",
+  menu: "M3 6h18M3 12h18M3 18h18",
 };
 
 export function Icon({ name, size, className = "icon" }) {

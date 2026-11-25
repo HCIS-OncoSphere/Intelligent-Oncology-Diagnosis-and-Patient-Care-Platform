@@ -5,8 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../../api.js";
 import { Avatar } from "../../shared/Avatar.jsx";
 import { Icon } from "../../shared/Icon.jsx";
-import { ThemeToggle } from "../../shared/ThemeToggle.jsx";
-import { Logo, errorText } from "../../shared/ui.jsx";
+import { errorText } from "../../shared/ui.jsx";
 import { EditDialog, PhotoDialog } from "./dialogs.jsx";
 import "./profile.css";
 
@@ -15,20 +14,6 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const fmtDate = (d, opts) => new Intl.DateTimeFormat(undefined, opts).format(new Date(d));
 const hhmm = (t) => String(t).slice(0, 5);
 const list = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
-
-/** The app header is hidden on the profile; this bar over the cover takes you home (logo) or signs you out. */
-function TopBar({ home, onSignOut }) {
-  return (
-    <nav className="pf-nav" aria-label="Profile">
-      <Link to={home} className="pf-home" title="Back to home"><Logo /> OncoSphere</Link>
-      <span className="pf-nav-right">
-        <ThemeToggle className="on-color" />
-        <Link to={home} className="pf-nav-btn"><Icon name="home" /><span>Home</span></Link>
-        <button className="pf-nav-btn" onClick={onSignOut}><Icon name="logOut" /><span>Sign out</span></button>
-      </span>
-    </nav>
-  );
-}
 
 const Stat = ({ icon, tone, label, value, children }) => (
   <div className={`pf-stat tone-${tone}`}>
@@ -246,9 +231,9 @@ function DoctorView({ p }) {
   );
 }
 
-function Profile({ home = "/", onSignOut }) {
+function Profile() {
   const userId = useParams()["*"];
-  const nav = <TopBar home={home} onSignOut={onSignOut} />;
+  const nav = null; // the app header and sidebar already carry Home, theme and Sign out
   const [p, setP] = useState(null);
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "edit" | "avatar" | "cover"
@@ -292,6 +277,6 @@ function Profile({ home = "/", onSignOut }) {
   );
 }
 
-// nav: false keeps it out of the tab bar (it opens from your name); hero: false hides the page banner;
-// chrome: false hides the app header too (the page has its own bar with the logo).
-export default { id: "profile", label: "My profile", order: 99, roles: ["patient", "clinical", "admin"], nav: false, hero: false, chrome: false, Component: Profile };
+// nav: false keeps it out of the sidebar (it opens from your name in the header); hero: false hides the page
+// banner (the profile draws its own cover). It shows inside the normal app header and sidebar.
+export default { id: "profile", label: "My profile", order: 99, roles: ["patient", "clinical", "admin", "finance"], nav: false, hero: false, Component: Profile };

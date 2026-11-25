@@ -1,10 +1,11 @@
 // App shell. Nobody edits this file to add a page: drop a folder in src/modules/<name>/index.jsx and it is picked up.
 // Each module gets its own URL, /<id>, so refresh, Back/Forward and shared links open the same page.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, logout } from "./api.js";
 import { Avatar } from "./shared/Avatar.jsx";
 import { ConfirmDialog } from "./shared/ConfirmDialog.jsx";
+import { Icon } from "./shared/Icon.jsx";
 import { ThemeToggle } from "./shared/ThemeToggle.jsx";
 import { Logo } from "./shared/ui.jsx";
 import Home from "./shell/Home.jsx";
@@ -14,7 +15,7 @@ import Register from "./shell/Register.jsx";
 import { Bell } from "./shared/Bell.jsx";
 
 // Each module default-exports { id, label, order, roles, Component }.
-// Optional: nav: false (no tab; reached by link), hero: false (no title banner),
+// Optional: nav: false (no sidebar link; reached by link), hero: false (no title banner),
 // chrome: false (no app header either; the page gets `home` and `onSignOut` props), description.
 const found = import.meta.glob("./modules/*/index.jsx", { eager: true });
 const modules = Object.values(found).map((m) => m.default).sort((a, b) => a.order - b.order);
@@ -28,13 +29,17 @@ const DESCRIPTIONS = {
   reports: "Key numbers and trends across the clinic.",
   admin: "System settings and the audit log.",
 };
+// Sidebar icon per page (see shared/Icon.jsx); pages not listed here get a plain dot.
+const NAV_ICONS = { home: "home", appointments: "calendar", records: "clipboard", billing: "receipt", imaging: "image",
+  reports: "barChart", hl7: "activity", admin: "shield" };
+const MOBILE = "(max-width: 900px)";
 const today = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" });
 
-function Page({ module, me, home, onSignOut }) {
+function Page({ module, me, home, onSignOut, links }) {
   useEffect(() => { document.title = `${module.label} · OncoSphere`; }, [module]);
   const description = module.description ?? DESCRIPTIONS[module.id];
   // the page draws its own header
-  if (module.hero === false) return <module.Component me={me} home={home} onSignOut={onSignOut} />;
+  if (module.hero === false) return <module.Component me={me} home={home} onSignOut={onSignOut} links={links} />;
   return (
     <>
       <section className="page-hero">
@@ -55,6 +60,26 @@ export default function App() {
   const { pathname } = useLocation();
   const [me, setMe] = useState(null);
   const [askSignOut, setAskSignOut] = useState(false);
+  // The sidebar: open by default on a wide screen, closed on a phone. A choice made on a wide screen is remembered.
+  const [navOpen, setNavOpen] = useState(() => {
+    if (window.matchMedia(MOBILE).matches) return false;
+    try { return localStorage.getItem("nav-open") !== "0"; } catch { return true; }
+  });
+  const toggleNav = () => setNavOpen((open) => {
+    if (!window.matchMedia(MOBILE).matches) { try { localStorage.setItem("nav-open", open ? "0" : "1"); } catch { /* ignore */ } }
+    return !open;
+  });
+  // on a phone the sidebar is a drawer: close it after choosing a page
+  const lastPath = useRef(pathname);
+  useEffect(() => {
+    if (lastPath.current !== pathname && window.matchMedia(MOBILE).matches) setNavOpen(false);
+    lastPath.current = pathname;
+  }, [pathname]);
+  useEffect(() => {
+    const esc = (e) => { if (e.key === "Escape" && window.matchMedia(MOBILE).matches) setNavOpen(false); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, []);
   const [checking, setChecking] = useState(() => !!localStorage.getItem("access"));
   useEffect(() => {
     if (!checking) return;
@@ -84,7 +109,8 @@ export default function App() {
 
   const visible = modules.filter((m) => m.roles.includes(me.role));
   const tabs = visible.filter((m) => m.nav !== false);
-  const home = tabs[0] ? `/${tabs[0].id}` : null;
+  const home = tabs[0] ? `/${tabs[0].id}` : null; // everybody lands on the Home page (order 0)
+  const links = tabs.filter((m) => m.id !== "home");
   const hasProfile = visible.some((m) => m.id === "profile");
   const name = [me.first_name, me.last_name].filter(Boolean).join(" ") || me.username;
   // Sign out buttons (header and profile bar) only open the confirmation; signing out happens on confirm.
@@ -103,7 +129,13 @@ export default function App() {
     <>
       {showHeader && <header className="topbar">
         <div className="topbar-in">
-          <div className="brand"><Logo /> OncoSphere</div>
+          {tabs.length > 0 && (
+            <button type="button" className="icon-btn nav-toggle" onClick={toggleNav} aria-label={navOpen ? "Hide menu" : "Show menu"}
+                    aria-expanded={navOpen} aria-controls="sidebar">
+              <Icon name="menu" size={22} />
+            </button>
+          )}
+          <NavLink to={home || "/"} className="brand"><Logo /> <span className="brand-name">OncoSphere</span></NavLink>
           <div className="spacer" />
           <Bell />
           <ThemeToggle />
@@ -114,21 +146,36 @@ export default function App() {
             <button className="sm" onClick={signOut}>Sign out</button>
           </div>
         </div>
-        <nav className="tabs" aria-label="Main">
-          {tabs.map((m) => (
-            <NavLink key={m.id} to={`/${m.id}`} className={({ isActive }) => `tab${isActive ? " active" : ""}`}>{m.label}</NavLink>
-          ))}
-        </nav>
       </header>}
-      <main>
-        {home ? (
-          <Routes>
-            {visible.map((m) => <Route key={m.id} path={`/${m.id}/*`} element={<Page module={m} me={me} home={home} onSignOut={signOut} />} />)}
-            {/* the home page and any unknown or not-allowed address go to the first page of this role */}
-            <Route path="*" element={<Navigate to={home} replace />} />
-          </Routes>
-        ) : <p className="page">No pages available for your role.</p>}
-      </main>
+      <div className={`shell${showHeader && navOpen ? " nav-open" : ""}${showHeader ? "" : " no-chrome"}`}>
+        {showHeader && tabs.length > 0 && (
+          <>
+            <nav id="sidebar" className="sidebar" aria-label="Main">
+              {tabs.map((m) => (
+                <NavLink key={m.id} to={`/${m.id}`} className={({ isActive }) => `side-link${isActive ? " active" : ""}`}>
+                  {NAV_ICONS[m.id] ? <Icon name={NAV_ICONS[m.id]} size={20} /> : <span className="side-dot" aria-hidden="true" />}
+                  <span>{m.label}</span>
+                </NavLink>
+              ))}
+              {/* on a phone the header is too narrow for these, so the drawer carries them */}
+              <div className="side-foot">
+                {hasProfile && <NavLink to="/profile" end className="side-link"><Icon name="user" size={20} /><span>My profile</span></NavLink>}
+                <button type="button" className="side-link" onClick={signOut}><Icon name="logOut" size={20} /><span>Sign out</span></button>
+              </div>
+            </nav>
+            <div className="scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
+          </>
+        )}
+        <main>
+          {home ? (
+            <Routes>
+              {visible.map((m) => <Route key={m.id} path={`/${m.id}/*`} element={<Page module={m} me={me} home={home} onSignOut={signOut} links={links} />} />)}
+              {/* the first page after sign-in, and any unknown or not-allowed address, is the Home page */}
+              <Route path="*" element={<Navigate to={home} replace />} />
+            </Routes>
+          ) : <p className="page">No pages available for your role.</p>}
+        </main>
+      </div>
       {askSignOut && (
         <ConfirmDialog
           title="Sign out of OncoSphere?"

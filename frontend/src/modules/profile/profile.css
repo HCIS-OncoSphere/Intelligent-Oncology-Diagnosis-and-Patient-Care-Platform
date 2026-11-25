@@ -23,26 +23,7 @@
 .pf-cover.has-image::after { /* keeps the button readable on bright photos */
   content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(0, 0, 0, .28), transparent 45%);
 }
-/* bar over the cover: logo goes home, plus Home and Sign out (the app header is hidden here) */
-.pf-nav {
-  position: absolute; z-index: 2; top: 0; left: 0; right: 0;
-  display: flex; align-items: center; gap: 12px; padding: 16px var(--gutter);
-}
-a.pf-home { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; font-weight: 700; font-size: 1.45rem; letter-spacing: -.02em; border-radius: 14px; }
-a.pf-home .brand-mark { width: 44px; height: 44px; border-radius: 13px; background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); color: #fff; }
-a.pf-home .brand-mark svg { width: 27px; height: 27px; }
-a.pf-home:hover .brand-mark { background: rgba(255, 255, 255, .26); }
-.pf-nav-right { margin-left: auto; display: flex; gap: 8px; }
-.pf-nav-btn, button.pf-nav-btn {
-  display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 7px 14px; border-radius: 999px;
-  color: #fff; font-weight: 600; font-size: .88rem; text-decoration: none;
-  background: rgba(15, 31, 46, .22); border: 1px solid rgba(255, 255, 255, .32);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-}
-.pf-nav-btn:hover, button.pf-nav-btn:hover:not(:disabled) { background: rgba(15, 31, 46, .42); border-color: #fff; }
-.pf-nav-btn .icon { width: 16px; height: 16px; }
-a.pf-home:focus-visible, .pf-nav-btn:focus-visible, button.pf-cover-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, .55); }
-
+button.pf-cover-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, .55); }
 button.pf-cover-btn {
   position: absolute; z-index: 1; bottom: 80px; right: var(--gutter);
   display: inline-flex; align-items: center; gap: 8px; color: #fff; font-size: .86rem;
@@ -203,12 +184,7 @@ button.pf-link { border: 0; background: none; padding: 0; min-height: 0; color: 
 /* ---------- small screens ---------- */
 @media (max-width: 640px) {
   .pf-cover { height: 240px; }
-  .pf-nav { padding: 12px var(--gutter); }
-  a.pf-home { font-size: 1.15rem; }
-  a.pf-home .brand-mark { width: 36px; height: 36px; }
-  .pf-nav-btn span { display: none; } /* icons only on phones */
-  .pf-nav-btn, button.pf-nav-btn { padding: 7px 10px; }
-  button.pf-cover-btn { bottom: auto; top: 64px; }
+  button.pf-cover-btn { bottom: auto; top: 12px; }
   .pf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .pf-stat { flex-direction: column; gap: 10px; padding: 14px; }
   .pf-stat-icon { width: 38px; height: 38px; }
