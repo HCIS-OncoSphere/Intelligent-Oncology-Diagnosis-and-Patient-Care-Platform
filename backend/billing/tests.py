@@ -5,7 +5,7 @@ from billing.models import Invoice, Service
 class BillingTests(BaseCase):
     def test_invoice_pay_flow(self):
         svc = Service.objects.create(name="Consult", price="500.00", icd10_code_id="C25.9")
-        self.as_doctor()
+        self.as_admin()
         r = self.c.post("/api/invoices/", dict(patient=self.pt1.id, items_in=[dict(service=svc.id, quantity=2)]),
                         format="json")
         self.assertEqual(r.status_code, 201)
@@ -26,7 +26,7 @@ class BillingTests(BaseCase):
 
     def test_patient_cannot_mark_cash_paid(self):
         svc = Service.objects.create(name="Consult", price="500.00")
-        self.as_doctor()
+        self.as_admin()
         inv = self.c.post("/api/invoices/", dict(patient=self.pt1.id, items_in=[dict(service=svc.id)]), format="json").data["id"]
         self.as_p1()
         for method in ("cash", "insurance"):
@@ -37,6 +37,17 @@ class BillingTests(BaseCase):
         self.assertEqual(r.data["status"], "paid")
         self.assertEqual(r.data["payments"][0]["method"], "cash")
         self.assertEqual(r.data["items"][0]["service_name"], "Consult")
+
+    def test_doctor_cannot_create_invoices(self):
+        svc = Service.objects.create(name="Consult", price="500.00")
+        body = dict(patient=self.pt1.id, items_in=[dict(service=svc.id)])
+        self.as_doctor()
+        self.assertEqual(self.c.post("/api/invoices/", body, format="json").status_code, 403)
+        self.assertEqual(Invoice.objects.count(), 0)
+        self.as_admin()
+        self.assertEqual(self.c.post("/api/invoices/", body, format="json").status_code, 201)
+        self.as_doctor()  # doctors can still read invoices
+        self.assertEqual(self.c.get("/api/invoices/").status_code, 200)
 
     def test_catalog_is_staff_only(self):
         self.as_p1()
@@ -110,3 +121,58 @@ class VisitBillingTests(BaseCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data, [{"reason": "Chemotherapy session", "service": "Chemotherapy session", "price": "4200.00"}])
         self.assertEqual(self.c.get("/api/services/").status_code, 403)  # the full catalog stays staff-only
+
+
+class ServiceCatalogTests(BaseCase):
+    """The price list: staff read it, only admins change it, and switched-off services can be brought back."""
+
+    def test_doctor_reads_but_cannot_change(self):
+        svc = Service.objects.create(name="Consult", price="500.00")
+        self.as_doctor()
+        self.assertEqual(self.c.get("/api/services/").status_code, 200)
+        self.assertEqual(self.c.post("/api/services/", dict(name="X", price="10"), format="json").status_code, 403)
+        self.assertEqual(self.c.patch(f"/api/services/{svc.id}/", dict(price="1"), format="json").status_code, 403)
+        self.as_p1()
+        self.assertEqual(self.c.get("/api/services/").status_code, 403)
+        svc.refresh_from_db()
+        self.assertEqual(str(svc.price), "500.00")
+
+    def test_admin_adds_edits_and_switches_off_and_on(self):
+        self.as_admin()
+        r = self.c.post("/api/services/", dict(name="Biopsy", price="900.00", visit_reason="Biopsy"), format="json")
+        self.assertEqual(r.status_code, 201)
+        sid = r.data["id"]
+        self.assertEqual(self.c.patch(f"/api/services/{sid}/", dict(price="950.00"), format="json").data["price"], "950.00")
+        # switched off: gone from the normal list and from booking prices, still there with ?all=1
+        self.c.patch(f"/api/services/{sid}/", dict(is_active=False), format="json")
+        self.assertNotIn(sid, [s["id"] for s in self.c.get("/api/services/").data])
+        self.assertIn(sid, [s["id"] for s in self.c.get("/api/services/?all=1").data])
+        self.assertEqual(self.c.get("/api/services/visit-prices/").data, [])
+        # ...and it can be switched back on
+        self.assertTrue(self.c.patch(f"/api/services/{sid}/", dict(is_active=True), format="json").data["is_active"])
+        self.assertIn(sid, [s["id"] for s in self.c.get("/api/services/").data])
+
+    def test_all_flag_is_admin_only(self):
+        Service.objects.create(name="Old", price="1.00", is_active=False)
+        self.as_doctor()
+        self.assertEqual(self.c.get("/api/services/?all=1").data, [])
+
+    def test_services_cannot_be_deleted(self):
+        svc = Service.objects.create(name="Consult", price="500.00")
+        self.as_admin()
+        self.assertEqual(self.c.delete(f"/api/services/{svc.id}/").status_code, 405)
+
+    def test_one_active_service_per_visit_reason(self):
+        Service.objects.create(name="Chemo", price="4200.00", visit_reason="Chemotherapy session")
+        self.as_admin()
+        r = self.c.post("/api/services/", dict(name="Chemo 2", price="1.00", visit_reason="chemotherapy SESSION"), format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("visit_reason", r.data)
+        # a switched-off service may keep the same reason
+        r = self.c.post("/api/services/", dict(name="Chemo old", price="1.00", visit_reason="Chemotherapy session",
+                                               is_active=False), format="json")
+        self.assertEqual(r.status_code, 201)
+
+    def test_price_cannot_be_negative(self):
+        self.as_admin()
+        self.assertEqual(self.c.post("/api/services/", dict(name="Bad", price="-5"), format="json").status_code, 400)

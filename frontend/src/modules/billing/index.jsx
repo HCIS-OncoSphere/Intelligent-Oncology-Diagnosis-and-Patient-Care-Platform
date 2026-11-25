@@ -7,6 +7,7 @@ import { Badge, Msg, Table, errorText, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
 import { PaymentDialog } from "./PaymentDialog.jsx";
 import { Receipt } from "./Receipt.jsx";
+import { ServicesAdmin } from "./ServicesAdmin.jsx";
 import { money } from "./money.js";
 import "./billing.css";
 
@@ -118,4 +119,28 @@ function Invoices({ me }) {
   );
 }
 
-export default { id: "billing", label: "Invoices", order: 40, roles: ["patient", "clinical", "admin"], Component: Invoices };
+/** Admins get a second tab for the price list. Its services are only fetched for admins. */
+function AdminBilling({ me }) {
+  const [tab, setTab] = useQueryState("tab", "invoices", { replace: true });
+  const [receipt] = useQueryState("receipt", "");
+  const [services, loadServices] = useList("/services/?all=1");
+  const viewingReceipt = /^\d+$/.test(receipt);
+  return (
+    <>
+      {!viewingReceipt && (
+        <div className="bl-filters" role="tablist">
+          {[["invoices", "Invoices"], ["services", "Price list"]].map(([v, label]) => (
+            <button key={v} role="tab" aria-selected={tab === v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{label}</button>
+          ))}
+        </div>
+      )}
+      {tab === "services" && !viewingReceipt ? <ServicesAdmin rows={services} reload={loadServices} /> : <Invoices me={me} />}
+    </>
+  );
+}
+
+function Billing({ me }) {
+  return me.role === "admin" ? <AdminBilling me={me} /> : <Invoices me={me} />;
+}
+
+export default { id: "billing", label: "Invoices", order: 40, roles: ["patient", "clinical", "admin"], Component: Billing };

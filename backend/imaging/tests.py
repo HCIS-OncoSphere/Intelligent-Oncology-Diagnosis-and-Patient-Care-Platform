@@ -37,3 +37,11 @@ class ImagingTests(BaseCase):
         r = self.c.patch(f"/api/imaging/studies/{sid}/", dict(body_part="Chest", series_in=[]), format="json")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data["body_part"], "Chest")
+
+    def test_study_shows_patient_name_and_mrn(self):
+        self.as_doctor()
+        r = self.c.post("/api/imaging/studies/", self.body(), format="json")
+        self.assertEqual(r.data["patient_mrn"], self.pt1.mrn)
+        self.assertTrue(r.data["patient_name"])
+        row = self.c.get("/api/imaging/studies/").data[0]
+        self.assertEqual(row["patient_mrn"], self.pt1.mrn)

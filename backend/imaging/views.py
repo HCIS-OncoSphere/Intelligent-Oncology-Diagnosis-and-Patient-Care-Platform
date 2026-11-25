@@ -19,11 +19,18 @@ class SeriesSerializer(serializers.ModelSerializer):
 class StudySerializer(serializers.ModelSerializer):
     series = SeriesSerializer(many=True, read_only=True)
     series_in = SeriesSerializer(many=True, write_only=True, required=False)
+    # read-only, so staff can see whose study it is without a second lookup
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
 
     class Meta:
         model = ImagingStudy
-        fields = ["id", "patient", "appointment", "orthanc_study_uid", "modality", "body_part", "description",
-                  "study_date", "series", "series_in"]
+        fields = ["id", "patient", "patient_name", "patient_mrn", "appointment", "orthanc_study_uid", "modality",
+                  "body_part", "description", "study_date", "series", "series_in"]
+
+    def get_patient_name(self, obj):
+        u = obj.patient.user
+        return u.get_full_name() or u.username
 
     def create(self, data):
         series = data.pop("series_in", [])
@@ -47,7 +54,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         return super().get_permissions() if self.action in ("list", "retrieve", "viewer_config") else [IsStaffRole()]
 
     def get_queryset(self):
-        qs = ImagingStudy.objects.prefetch_related("series").order_by("-study_date", "-id")
+        qs = ImagingStudy.objects.select_related("patient__user").prefetch_related("series").order_by("-study_date", "-id")
         u = self.request.user
         if u.role not in ("admin", "clinical"):
             return qs.filter(patient__user=u)

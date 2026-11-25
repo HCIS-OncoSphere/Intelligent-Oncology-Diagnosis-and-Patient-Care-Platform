@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.permissions import IsStaffRole
+from accounts.permissions import IsAdminRole, IsStaffRole
 
 from .models import ICD10Code, Invoice, InvoiceItem, Payment, Service
 
@@ -24,6 +24,29 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = "__all__"
 
+    def validate_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Price cannot be negative.")
+        return value
+
+    def validate_visit_reason(self, value):
+        return (value or "").strip()
+
+    def validate(self, attrs):
+        # One active service per booking reason: the booking screen and the auto-invoice both pick the first
+        # match, so a second one would be silently ignored.
+        inst = self.instance
+        reason = attrs.get("visit_reason", inst.visit_reason if inst else "")
+        active = attrs.get("is_active", inst.is_active if inst else True)
+        if reason and active:
+            clash = Service.objects.filter(is_active=True, visit_reason__iexact=reason)
+            if inst:
+                clash = clash.exclude(pk=inst.pk)
+            if clash.exists():
+                raise serializers.ValidationError(
+                    {"visit_reason": [f'"{reason}" is already used by the service "{clash.first().name}".']})
+        return attrs
+
 
 class ICD10ViewSet(viewsets.ModelViewSet):
     queryset = ICD10Code.objects.all()
@@ -32,11 +55,29 @@ class ICD10ViewSet(viewsets.ModelViewSet):
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    queryset = Service.objects.filter(is_active=True)
+    """The price list. Staff read it; only admins change it. A service is switched off with is_active=false
+    (never deleted: invoices keep pointing at it). The list shows active services; admins add ?all=1 to see
+    the switched-off ones too, and can always open one by id to switch it back on."""
     serializer_class = ServiceSerializer
-    permission_classes = [IsStaffRole]
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
-    @action(detail=False, methods=["get"], url_path="visit-prices", permission_classes=[IsAuthenticated])
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsStaffRole()]
+        if self.action == "visit_prices":
+            return [IsAuthenticated()]
+        return [IsAdminRole()]
+
+    def get_queryset(self):
+        qs = Service.objects.all().order_by("id")
+        u = self.request.user
+        is_admin = u.is_authenticated and u.role == "admin"
+        wants_all = self.request.query_params.get("all") in ("1", "true")
+        if is_admin and (self.action != "list" or wants_all):
+            return qs
+        return qs.filter(is_active=True)
+
+    @action(detail=False, methods=["get"], url_path="visit-prices")
     def visit_prices(self, request):
         """What each booking reason costs, for the booking screen (anyone signed in):
         [{"reason": "Chemotherapy session", "service": "Chemotherapy session", "price": "4200.00"}]"""
@@ -139,7 +180,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [IsStaffRole()]
+            return [IsAdminRole()]  # invoices are raised by the reception desk (admins); doctors only read them
         return super().get_permissions()
 
     def get_queryset(self):

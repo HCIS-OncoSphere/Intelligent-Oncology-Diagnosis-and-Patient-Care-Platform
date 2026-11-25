@@ -9,6 +9,7 @@ const EMPTY = { patient: "", orthanc_study_uid: "", modality: "CT", body_part: "
 
 /** Staff only: register a study that is already stored in Orthanc. */
 function RegisterStudy({ onCreated }) {
+  const [patients] = useList("/patients/");
   const [f, setF] = useState(EMPTY);
   const [msg, setMsg] = useState(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -26,7 +27,12 @@ function RegisterStudy({ onCreated }) {
   return (
     <form className="card" onSubmit={create}>
       <h3>Register study</h3>
-      <Field label="Patient id" value={f.patient} onChange={set("patient")} size="4" required />
+      <label>Patient
+        <select value={f.patient} onChange={set("patient")} required>
+          <option value="">Choose a patient…</option>
+          {patients.map((p) => <option key={p.id} value={p.id}>{p.name || "(no name)"} · {p.mrn}</option>)}
+        </select>
+      </label>
       <Field label="Orthanc study UID" value={f.orthanc_study_uid} onChange={set("orthanc_study_uid")} required />
       <label>Modality
         <select value={f.modality} onChange={set("modality")}>
@@ -42,6 +48,7 @@ function RegisterStudy({ onCreated }) {
 }
 
 function Imaging({ me }) {
+  const staff = me.role !== "patient";
   const [rows, load] = useList("/imaging/studies/");
   const [cfg, setCfg] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -50,14 +57,16 @@ function Imaging({ me }) {
 
   return (
     <>
-      {me.role !== "patient" && <RegisterStudy onCreated={load} />}
+      {staff && <RegisterStudy onCreated={load} />}
       <Msg m={msg} />
       <Table
-        head={["Date", "Modality", "Body part", "Series", ""]}
+        head={["Date", ...(staff ? ["Patient"] : []), "Modality", "Body part", "Series", ""]}
         empty="No studies yet."
         rows={rows.map((s) => (
           <tr key={s.id}>
-            <td>{s.study_date}</td><td>{s.modality}</td><td>{s.body_part}</td><td>{s.series.length}</td>
+            <td>{s.study_date}</td>
+            {staff && <td>{s.patient_name}<br /><small>{s.patient_mrn}</small></td>}
+            <td>{s.modality}</td><td>{s.body_part}</td><td>{s.series.length}</td>
             <td><button onClick={() => open(s)}>Open</button></td>
           </tr>
         ))}
