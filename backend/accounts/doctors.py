@@ -1,5 +1,5 @@
 """Doctor registration (self-service, needs an admin's approval, or created directly by an admin) and
-the creation of finance accounts."""
+the creation of doctor accounts by an admin."""
 import secrets
 import string
 
@@ -275,29 +275,6 @@ class AdminDoctorSerializer(DoctorFieldsMixin):
         return user
 
 
-class FinanceStaffSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
-    email = serializers.EmailField()
-    phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    password = serializers.CharField(write_only=True, min_length=8, required=False)
-
-    def validate_email(self, v):
-        v = _clean_email(v)
-        if User.objects.filter(email__iexact=v).exists():
-            raise serializers.ValidationError("Email already registered.")
-        return v
-
-    def create(self, d):
-        pw = d.get("password") or temporary_password()
-        user = User.objects.create_user(
-            username=make_username(d["email"]), password=pw, email=d["email"], first_name=d["first_name"],
-            last_name=d["last_name"], phone=d.get("phone", ""), role=User.Role.FINANCE, is_active=True,
-            must_change_password=True)
-        user._temporary = None if d.get("password") else pw
-        return user
-
-
 class _AdminCreateView(APIView):
     permission_classes = [IsAdminRole]
     serializer_class = None
@@ -322,8 +299,3 @@ class _AdminCreateView(APIView):
 class AdminDoctorCreateView(_AdminCreateView):
     serializer_class = AdminDoctorSerializer
     welcome = "Your OncoSphere doctor account"
-
-
-class AdminFinanceCreateView(_AdminCreateView):
-    serializer_class = FinanceStaffSerializer
-    welcome = "Your OncoSphere finance account"

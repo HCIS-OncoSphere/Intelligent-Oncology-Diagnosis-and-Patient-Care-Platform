@@ -13,9 +13,8 @@ const GENDER = { M: "Male", F: "Female", O: "Other" };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const fmtDate = (d, opts) => new Intl.DateTimeFormat(undefined, opts).format(new Date(d));
 const money = (v) => `EGP ${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const METHOD = { cash: "Cash", card: "Card", insurance: "Insurance" };
 const day = { day: "numeric", month: "short", year: "numeric" };
-const ROLE_LABEL = { admin: "Administrator", finance: "Financial staff", clinical: "Clinical staff", patient: "Patient" };
+const ROLE_LABEL = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient" };
 const hhmm = (t) => String(t).slice(0, 5);
 const list = (s) => String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
 
@@ -333,7 +332,7 @@ function AdminView({ p }) {
     <>
       <div className="pf-stats">
         <Stat icon="users" tone="violet" label="People" value={a.active_users}>
-          <span className="pf-stat-sub">{u.patient || 0} patients · {u.clinical || 0} doctors · {u.finance || 0} finance</span>
+          <span className="pf-stat-sub">{u.patient || 0} patients · {u.clinical || 0} doctors</span>
         </Stat>
         <Stat icon="shield" tone="rose" label="Doctor requests" value={a.pending_requests} />
         <Stat icon="calendar" tone="teal" label="Visits today" value={a.today_visits} />
@@ -351,33 +350,6 @@ function AdminView({ p }) {
             </div>
           )) : <p className="pf-empty-block">Nothing logged yet.</p>}
           <p className="pf-note"><Link to="/admin?tab=audit">Open the full audit log</Link></p>
-        </Card>
-      </div>
-    </>
-  );
-}
-
-function FinanceView({ p }) {
-  const f = p.finance;
-  return (
-    <>
-      <div className="pf-stats">
-        <Stat icon="receipt" tone="amber" label="Unpaid invoices" value={f.unpaid_count} />
-        <Stat icon="trending" tone="rose" label="Amount owed" value={money(f.amount_owed)} />
-        <Stat icon="checkCircle" tone="green" label="Payments you recorded" value={f.collected_count} />
-        <Stat icon="barChart" tone="teal" label="You collected" value={money(f.collected_total)} />
-      </div>
-      <div className="pf-grid">
-        <AccountCard p={p} />
-        <Card icon="receipt" tone="green" title="Your latest payments">
-          {f.recent_payments.length ? f.recent_payments.map((x, i) => (
-            <div key={i} className="pf-line">
-              <span className="pf-line-text"><b>{x.invoice}</b>
-                <small>{METHOD[x.method] || x.method} · {fmtDate(x.paid_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
-              </span>
-              <b>{money(x.amount)}</b>
-            </div>
-          )) : <p className="pf-empty-block">You haven't recorded a payment yet.</p>}
         </Card>
       </div>
     </>
@@ -415,8 +387,7 @@ function Profile() {
         {p.patient && <PatientView p={p} />}
         {p.doctor && <DoctorView p={p} />}
         {p.admin && <AdminView p={p} />}
-        {p.finance && <FinanceView p={p} />}
-        {!p.patient && !p.doctor && !p.admin && !p.finance && (
+        {!p.patient && !p.doctor && !p.admin && (
           <div className="pf-grid"><AccountCard p={p} /></div>
         )}
       </div>
@@ -429,4 +400,4 @@ function Profile() {
 
 // nav: false keeps it out of the sidebar (it opens from your name in the header); hero: false hides the page
 // banner (the profile draws its own cover). It shows inside the normal app header and sidebar.
-export default { id: "profile", label: "My profile", order: 99, roles: ["patient", "clinical", "admin", "finance"], nav: false, hero: false, Component: Profile };
+export default { id: "profile", label: "My profile", order: 99, roles: ["patient", "clinical", "admin"], nav: false, hero: false, Component: Profile };

@@ -88,20 +88,6 @@ async function load(role) {
       ],
     };
   }
-  if (role === "finance") {
-    const inv = await get("/invoices/");
-    if (!inv) return { stats: [], panels: [] };
-    const due = pending(inv);
-    return {
-      action: { label: "Open invoices", to: "/billing", icon: "receipt" },
-      stats: [
-        { icon: "receipt", tone: due.length ? "warn" : "ok", label: "Unpaid invoices", value: due.length, to: "/billing?status=pending" },
-        { icon: "barChart", tone: "danger", label: "Amount owed", value: money(due.reduce((s, i) => s + owed(i), 0)), to: "/billing?status=pending" },
-        { icon: "checkCircle", tone: "ok", label: "Paid invoices", value: inv.filter((i) => i.status === "paid").length, to: "/billing?status=paid" },
-      ],
-      panels: [{ title: "Waiting for payment", to: "/billing?status=pending", more: "All unpaid", empty: "Everything is paid.", items: due.slice(0, 6).map((i) => billItem(i, true)) }],
-    };
-  }
   // admin
   const [reqs, up, inv] = await Promise.all([get("/admin/doctor-requests/?status=pending"), get("/appointments/?upcoming=1"), get("/invoices/")]);
   const u = up ? scheduled(up) : null, due = inv ? pending(inv) : null;
@@ -199,5 +185,5 @@ function Home({ me, links = [] }) {
 }
 
 export default {
-  id: "home", label: "Home", order: 0, roles: ["patient", "clinical", "admin", "finance"], hero: false, Component: Home,
+  id: "home", label: "Home", order: 0, roles: ["patient", "clinical", "admin"], hero: false, Component: Home,
 };

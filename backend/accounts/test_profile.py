@@ -168,7 +168,6 @@ class ProfileMoreInfoTests(AccountsTestBase):
         start = timezone.now() + timedelta(days=1)
         Appointment.objects.create(patient=self.patient_profile_1, doctor=self.doctor, booked_by=self.admin_user,
                                    start_time=start, end_time=start + timedelta(minutes=30), reason="Follow-up")
-        self.finance_user = User.objects.create_user("fin_t", email="fin_t@test.com", password="Finance-2026", role="finance")
         self.patient_profile_1.national_id = "29003020101234"
         self.patient_profile_1.emergency_contact_phone = "01099998888"
         self.patient_profile_1.save()
@@ -213,12 +212,9 @@ class ProfileMoreInfoTests(AccountsTestBase):
         public = self.client.get(f"/api/profile/{self.clinical_user.id}/").data["doctor"]
         self.assertNotIn("upcoming", public)  # patients' names stay private
 
-    def test_admin_and_finance_have_their_own_blocks(self):
+    def test_admin_has_its_own_block(self):
         self.login_user()
         adm = self.client.get("/api/profile/").data
         self.assertEqual(adm["admin"]["users"]["patient"], 2)
         self.assertIn("recent_activity", adm["admin"])
-        self.login_user("fin_t", "Finance-2026")
-        fin = self.client.get("/api/profile/").data
-        self.assertIn("collected_total", fin["finance"])
-        self.assertIsNone(fin["admin"])
+        self.assertIsNone(adm["patient"])

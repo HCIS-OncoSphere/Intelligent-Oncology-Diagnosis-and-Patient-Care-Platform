@@ -55,7 +55,7 @@ function NewInvoice({ onCreated }) {
 
 function Invoices({ me }) {
   const staff = me.role !== "patient";
-  const desk = me.role === "admin" || me.role === "finance"; // billing staff take payments; doctors don't handle money
+  const desk = me.role === "admin"; // billing staff take payments; doctors don't handle money
   const [rows, load] = useList("/invoices/");
   const [msg, setMsg] = useState(null), [paying, setPaying] = useState(null);
   const [receipt, setReceipt] = useQueryState("receipt", "");
@@ -119,7 +119,7 @@ function Invoices({ me }) {
   );
 }
 
-/** Billing staff (finance, admins) get a second tab for the price list. Its services are only fetched for them. */
+/** Billing staff (admins) get a second tab for the price list. Its services are only fetched for them. */
 function AdminBilling({ me }) {
   const [tab, setTab] = useQueryState("tab", "invoices", { replace: true });
   const [receipt] = useQueryState("receipt", "");
@@ -140,7 +140,7 @@ function AdminBilling({ me }) {
 }
 
 function Billing({ me }) {
-  return me.role === "admin" || me.role === "finance" ? <AdminBilling me={me} /> : <Invoices me={me} />;
+  return me.role === "admin" ? <AdminBilling me={me} /> : <Invoices me={me} />;
 }
 
-export default { id: "billing", label: "Invoices", order: 40, roles: ["patient", "clinical", "admin", "finance"], Component: Billing };
+export default { id: "billing", label: "Invoices", order: 40, roles: ["patient", "clinical", "admin"], Component: Billing };

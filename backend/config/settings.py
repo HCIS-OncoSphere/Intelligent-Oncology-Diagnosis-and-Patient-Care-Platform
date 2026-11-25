@@ -187,6 +187,8 @@ STATIC_URL = "static/"
 # in production let the web server serve MEDIA_ROOT.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
+# Private uploads (doctors' licence scans): never served as static files, only through admin-only API views.
+PRIVATE_MEDIA_ROOT = Path(os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "Africa/Cairo"

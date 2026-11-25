@@ -151,7 +151,7 @@ class GoogleAuthView(generics.GenericAPIView):
                     status=409,
                 )
         elif user.role != User.Role.PATIENT:
-            # A Google account can't be used to sign in as staff/admin/finance.
+            # A Google account can't be used to sign in as staff/admin.
             return Response(
                 {"detail": "This email is registered as a staff account. Sign in with your password instead."},
                 status=403,

@@ -39,3 +39,4 @@ Thumbs.db
 
 # Uploaded profile photos
 backend/media/
+backend/private_media/

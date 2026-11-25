@@ -20,7 +20,7 @@ import { Bell } from "./shared/Bell.jsx";
 const found = import.meta.glob("./modules/*/index.jsx", { eager: true });
 const modules = Object.values(found).map((m) => m.default).sort((a, b) => a.order - b.order);
 
-const ROLE = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient", finance: "Financial staff" };
+const ROLE = { admin: "Administrator", clinical: "Clinical staff", patient: "Patient" };
 
 // One line under each page title in the banner. A module can set its own with a `description` field.
 const DESCRIPTIONS = {

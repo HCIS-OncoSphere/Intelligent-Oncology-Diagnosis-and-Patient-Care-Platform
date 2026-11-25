@@ -4,16 +4,6 @@ from .models import Patient
 _KNOWN_BLOOD_TYPES = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", ""}
 
 
-class PatientNameSerializer(serializers.ModelSerializer):
-    """What finance staff may see of a patient: who they are (for an invoice), nothing clinical."""
-    name = serializers.CharField(source="user.get_full_name", read_only=True)
-
-    class Meta:
-        model = Patient
-        fields = ["id", "mrn", "name"]
-        read_only_fields = fields
-
-
 class PatientSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="user.get_full_name", read_only=True)
     email = serializers.CharField(source="user.email", read_only=True)

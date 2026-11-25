@@ -2,7 +2,7 @@ from rest_framework import permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
 
 from .models import Patient
-from .serializers import PatientNameSerializer, PatientSerializer
+from .serializers import PatientSerializer
 
 # Fields that only clinical staff or admins may update
 _CLINICAL_FIELDS = {"cancer_type", "cancer_stage"}
@@ -24,20 +24,12 @@ class PatientViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Patient.objects.select_related("user").order_by("id")
         u = self.request.user
-        if u.role in ("admin", "clinical", "finance"):
+        if u.role in ("admin", "clinical"):
             return qs
         return qs.filter(user=u)
 
-    def get_serializer_class(self):
-        # Finance staff pick a patient when raising an invoice: they get the name and MRN, nothing medical.
-        if getattr(self.request.user, "role", None) == "finance":
-            return PatientNameSerializer
-        return super().get_serializer_class()
-
     def perform_update(self, serializer):
         user = self.request.user
-        if user.role == "finance":
-            raise PermissionDenied("Finance staff cannot edit patient records.")
         # Patients cannot use PUT (full update)
         if user.role == "patient" and self.request.method == "PUT":
             raise PermissionDenied("Patients may only use PATCH for partial updates.")

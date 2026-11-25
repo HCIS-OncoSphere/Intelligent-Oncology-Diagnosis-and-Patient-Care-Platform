@@ -1,4 +1,4 @@
-"""Profile pages for every role (patient, doctor, admin, finance), plus profile-photo and cover uploads.
+"""Profile pages for every role (patient, doctor, admin), plus profile-photo and cover uploads.
 
 GET    /api/profile/             your own profile
 GET    /api/profile/<user_id>/   someone else's profile (rules in _can_view)
@@ -246,29 +246,6 @@ def _admin_block():
     return block
 
 
-def _finance_block(user):
-    """What a finance staff member has on their desk and what they have collected."""
-    block = {"unpaid_count": 0, "amount_owed": "0.00", "collected_count": 0, "collected_total": "0.00",
-             "recent_payments": []}
-    try:
-        from django.db.models import Sum
-        from billing.models import Invoice, Payment
-
-        due = list(Invoice.objects.filter(status="pending").prefetch_related("payments"))
-        block["unpaid_count"] = len(due)
-        block["amount_owed"] = f"{sum((i.total_amount - i.paid_amount for i in due), Decimal('0.00')):.2f}"
-        mine = Payment.objects.filter(recorded_by=user)
-        block["collected_count"] = mine.count()
-        block["collected_total"] = f"{mine.aggregate(s=Sum('amount'))['s'] or Decimal('0.00'):.2f}"
-        block["recent_payments"] = [{
-            "invoice": p.invoice.invoice_number, "amount": f"{p.amount:.2f}", "method": p.method,
-            "paid_at": p.paid_at,
-        } for p in mine.select_related("invoice").order_by("-paid_at")[:5]]
-    except (ImportError, LookupError):
-        pass
-    return block
-
-
 def build_profile(request, user):
     data = {
         "id": user.id,
@@ -288,7 +265,6 @@ def build_profile(request, user):
         "patient": None,
         "doctor": None,
         "admin": None,
-        "finance": None,
     }
     if user.role == "patient" and hasattr(user, "patient"):
         data["patient"] = _patient_block(request, user.patient)
@@ -297,8 +273,6 @@ def build_profile(request, user):
         data["doctor"] = _doctor_block(request, user.doctor, private)
     if user.role == "admin":
         data["admin"] = _admin_block()
-    if user.role == "finance":
-        data["finance"] = _finance_block(user)
     return data
 
 

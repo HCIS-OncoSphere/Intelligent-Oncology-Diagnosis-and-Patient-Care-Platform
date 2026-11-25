@@ -1,4 +1,4 @@
-"""Doctor registration (self + by admin), the approval flow, finance accounts and the new patient fields."""
+"""Doctor registration (self + by admin), the approval flow and the new patient fields."""
 import shutil
 import tempfile
 
@@ -10,18 +10,20 @@ from accounts.models import DoctorApplication, Notification, User
 from accounts.testing import AccountsTestBase
 
 TMP_MEDIA = tempfile.mkdtemp()
+TMP_PRIVATE = tempfile.mkdtemp()
 
 
 def licence(name="licence.pdf", size=100):
     return SimpleUploadedFile(name, b"%PDF-" + b"x" * size, content_type="application/pdf")
 
 
-@override_settings(MEDIA_ROOT=TMP_MEDIA)
+@override_settings(MEDIA_ROOT=TMP_MEDIA, PRIVATE_MEDIA_ROOT=TMP_PRIVATE)
 class StaffTestBase(AccountsTestBase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(TMP_MEDIA, ignore_errors=True)
+        shutil.rmtree(TMP_PRIVATE, ignore_errors=True)
 
     def doctor_form(self, **over):
         base = {
@@ -110,6 +112,16 @@ class DoctorApprovalTests(StaffTestBase):
         f = self.client.get(rows[0]["license_url"])
         self.assertEqual(f.status_code, 200)
 
+    def test_licence_is_stored_privately_and_only_admins_can_open_it(self):
+        from pathlib import Path
+        name = self.app.license_document.name
+        self.assertTrue((Path(TMP_PRIVATE) / name).exists())
+        self.assertFalse((Path(TMP_MEDIA) / name).exists())   # nothing for /media/ to serve
+        url = f"/api/admin/doctor-requests/{self.app.id}/license/"
+        self.assertEqual(self.client.get(url).status_code, 401)
+        self.client.force_authenticate(self.app.user)          # the applicant / any non-admin
+        self.assertIn(self.client.get(url).status_code, (403, 404))
+
     def test_approve_activates_and_emails(self):
         self.login_user()
         res = self.client.post(f"/api/admin/doctor-requests/{self.app.id}/approve/")
@@ -177,24 +189,14 @@ class AdminCreatesAccountsTests(StaffTestBase):
             self.login_user(user, pw)
             self.assertEqual(self.client.post("/api/admin/doctors/", self.doctor_form(), format="multipart")
                              .status_code, 403)
-            self.assertEqual(self.client.post("/api/admin/finance/", {"first_name": "a", "last_name": "b",
-                             "email": "f@test.com"}, format="json").status_code, 403)
-
-    def test_admin_creates_finance_staff(self):
-        self.login_user()
-        res = self.client.post("/api/admin/finance/", {"first_name": "Nour", "last_name": "Adel",
-                               "email": "nour@test.com"}, format="json")
-        self.assertEqual(res.status_code, 201, res.data)
-        self.assertEqual(res.data["role"], "finance")
-        self.assertEqual(self.client.post("/api/admin/finance/", {"first_name": "N", "last_name": "A",
-                         "email": "nour@test.com"}, format="json").status_code, 400)
 
     def test_change_password_clears_the_flag(self):
         self.login_user()
-        temp = self.client.post("/api/admin/finance/", {"first_name": "Nour", "last_name": "Adel",
-                                "email": "nour@test.com"}, format="json").data["temporary_password"]
+        form = self.doctor_form()
+        del form["password"]
+        temp = self.client.post("/api/admin/doctors/", form, format="multipart").data["temporary_password"]
         self.logout_user()
-        self.login_user("nour@test.com", temp)
+        self.login_user("hala@test.com", temp)
         bad = self.client.post("/api/auth/change-password/", {"current_password": "x", "new_password": "Brand-New-2026"},
                                format="json")
         self.assertEqual(bad.status_code, 400)
@@ -207,41 +209,19 @@ class AdminCreatesAccountsTests(StaffTestBase):
         self.assertFalse(self.client.get("/api/auth/me/").data["must_change_password"])
 
 
-class FinanceRoleTests(StaffTestBase):
-    def setUp(self):
-        super().setUp()
-        self.finance = User.objects.create_user("fin", email="fin@test.com", password="Finance-2026", role="finance")
-
-    def test_finance_runs_billing(self):
+class BillingPermissionTests(StaffTestBase):
+    def test_admin_runs_billing(self):
         from billing.models import Service
-        self.login_user("fin", "Finance-2026")
+        self.login_user()
         svc = self.client.post("/api/services/", {"name": "Consult", "price": "500.00"}, format="json")
         self.assertEqual(svc.status_code, 201, svc.data)
         inv = self.client.post("/api/invoices/", {"patient": self.patient_profile_1.id,
                                "items_in": [{"service": Service.objects.get().id, "quantity": 2}]}, format="json")
         self.assertEqual(inv.status_code, 201, inv.data)
-        self.assertEqual(self.client.get("/api/invoices/").data[0]["patient_mrn"], self.patient_profile_1.mrn)
         pay = self.client.post(f"/api/invoices/{inv.data['id']}/pay/", {"amount": "1000", "method": "cash"},
                                format="json")
         self.assertEqual(pay.status_code, 200)
         self.assertEqual(pay.data["status"], "paid")
-
-    def test_finance_cannot_see_medical_data(self):
-        self.login_user("fin", "Finance-2026")
-        for url in ("/api/appointments/", "/api/imaging/studies/", "/api/reports/summary/"):
-            res = self.client.get(url)
-            self.assertNotEqual(res.status_code, 404, url)  # the URL exists, so an empty/403 answer is meaningful
-            body = getattr(res, "data", None)
-            body = body.get("results", body) if isinstance(body, dict) else body
-            self.assertTrue(res.status_code == 403 or not body, (url, res.status_code, body))
-
-    def test_finance_sees_only_names_of_patients(self):
-        self.login_user("fin", "Finance-2026")
-        rows = self.client.get("/api/patients/").data
-        rows = rows.get("results", rows) if isinstance(rows, dict) else rows
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(set(rows[0]), {"id", "mrn", "name"})
-        self.assertEqual(self.client.patch(f"/api/patients/{rows[0]['id']}/", {"phone": "1"}, format="json").status_code, 403)
 
     def test_doctor_and_patient_cannot_change_prices_or_pay_for_others(self):
         self.login_user("dr_salma_test", "DoctorPassword123!")

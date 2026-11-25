@@ -55,7 +55,7 @@ class ICD10ViewSet(viewsets.ModelViewSet):
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    """The price list. Staff read it; only billing staff (finance, admins) change it. A service is switched off with is_active=false
+    """The price list. Staff read it; only billing staff (admins) change it. A service is switched off with is_active=false
     (never deleted: invoices keep pointing at it). The list shows active services; admins add ?all=1 to see
     the switched-off ones too, and can always open one by id to switch it back on."""
     serializer_class = ServiceSerializer
@@ -71,7 +71,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Service.objects.all().order_by("id")
         u = self.request.user
-        is_admin = u.is_authenticated and u.role in ("admin", "finance")
+        is_admin = u.is_authenticated and u.role in ("admin",)
         wants_all = self.request.query_params.get("all") in ("1", "true")
         if is_admin and (self.action != "list" or wants_all):
             return qs
@@ -180,7 +180,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [IsBillingStaff()]  # raised by finance staff (admins as back-up); doctors only read them
+            return [IsBillingStaff()]  # raised by admins; doctors only read them
         return super().get_permissions()
 
     def get_queryset(self):
@@ -192,7 +192,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             if not appt.isdigit():
                 raise serializers.ValidationError({"appointment": ["Must be a whole number."]})
             qs = qs.filter(appointment_id=int(appt))
-        return qs if u.role in ("admin", "clinical", "finance") else qs.filter(patient__user=u)
+        return qs if u.role in ("admin", "clinical") else qs.filter(patient__user=u)
 
     @action(detail=True, methods=["post"])
     @transaction.atomic

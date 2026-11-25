@@ -1,4 +1,4 @@
-// Admin: create a doctor or a finance-staff account directly. The new person gets a temporary password
+// Admin: create a doctor account directly. The new person gets a temporary password
 // (shown here once, and e-mailed) and must choose their own at the first sign-in.
 import { useState } from "react";
 import { api } from "../../api.js";
@@ -20,9 +20,8 @@ function Created({ made, onClose }) {
   );
 }
 
-function AccountForm({ kind }) {
-  const doctor = kind === "doctor";
-  const [f, setF] = useState(doctor ? DOCTOR : PERSON);
+function AccountForm() {
+  const [f, setF] = useState(DOCTOR);
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState(null), [made, setMade] = useState(null), [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -34,8 +33,8 @@ function AccountForm({ kind }) {
     Object.entries(f).forEach(([k, v]) => { if (String(v).trim() !== "") body.append(k, String(v).trim()); });
     if (file) body.append("license_document", file);
     try {
-      setMade(await api(doctor ? "/admin/doctors/" : "/admin/finance/", { method: "POST", body }));
-      setF(doctor ? DOCTOR : PERSON); setFile(null); e.target.reset();
+      setMade(await api("/admin/doctors/", { method: "POST", body }));
+      setF(DOCTOR); setFile(null); e.target.reset();
     } catch (x) {
       setMsg({ ok: false, text: errorText(x) });
     } finally {
@@ -45,7 +44,7 @@ function AccountForm({ kind }) {
 
   return (
     <fieldset>
-      <legend>{doctor ? "Add a doctor" : "Add finance staff"}</legend>
+      <legend>Add a doctor</legend>
       <form onSubmit={submit}>
         <div className="form-row">
           <label>First name<input value={f.first_name} onChange={set("first_name")} required /></label>
@@ -53,7 +52,7 @@ function AccountForm({ kind }) {
           <label>Email<input type="email" value={f.email} onChange={set("email")} required /></label>
           <label>Phone<input type="tel" value={f.phone} onChange={set("phone")} /></label>
         </div>
-        {doctor && (
+        {(
           <>
             <div className="form-row">
               <label>Specialty<input value={f.specialty} onChange={set("specialty")} required /></label>
@@ -68,7 +67,7 @@ function AccountForm({ kind }) {
             </div>
           </>
         )}
-        <button className="primary" disabled={busy}>{busy ? "Creating…" : doctor ? "Create doctor account" : "Create finance account"}</button>
+        <button className="primary" disabled={busy}>{busy ? "Creating…" : "Create doctor account"}</button>
       </form>
       <Msg m={msg} />
       {made && <Created made={made} onClose={() => setMade(null)} />}
@@ -79,9 +78,8 @@ function AccountForm({ kind }) {
 export function StaffAccounts() {
   return (
     <>
-      <p className="hint">Both accounts are active straight away. The person is asked to replace the temporary password when they first sign in.</p>
-      <AccountForm kind="doctor" />
-      <AccountForm kind="finance" />
+      <p className="hint">The account is active straight away. The person is asked to replace the temporary password when they first sign in.</p>
+      <AccountForm />
     </>
   );
 }

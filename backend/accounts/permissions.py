@@ -16,10 +16,9 @@ class IsAdminRole(BasePermission):
 
 
 class IsBillingStaff(BasePermission):
-    """The people who raise invoices, take payments and change the price list: finance staff (and admins as a
-    back-up). To make billing finance-only, drop "admin" here."""
+    """The people who raise invoices, take payments and change the price list: admins."""
     def has_permission(self, request, view):
-        return _role(request) in ("finance", "admin")
+        return _role(request) in ("admin",)
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
@@ -28,7 +27,7 @@ class IsBillingStaff(BasePermission):
 class IsBillingReader(BasePermission):
     """Who may read the price list, ICD-10 codes and every invoice: billing staff plus doctors."""
     def has_permission(self, request, view):
-        return _role(request) in ("finance", "admin", "clinical")
+        return _role(request) in ("admin", "clinical")
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)

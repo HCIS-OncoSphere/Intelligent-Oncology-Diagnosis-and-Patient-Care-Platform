@@ -23,9 +23,6 @@ class Command(BaseCommand):
         pu.set_password("Patient12345"); pu.save()
         Patient.objects.get_or_create(user=pu, defaults=dict(date_of_birth=date(1985, 4, 2), gender="M", phone="01000000000", cancer_type="Pancreatic", cancer_stage="II"))
 
-        fu, _ = User.objects.get_or_create(username="finance1", defaults=dict(role="finance", first_name="Nour", last_name="Adel", email="finance@onco.test"))
-        fu.set_password("Finance12345"); fu.save()
-
         for code, desc in [("C25.9", "Malignant neoplasm of pancreas, unspecified"), ("C34.90", "Malignant neoplasm of unspecified part of bronchus or lung"), ("Z51.11", "Encounter for antineoplastic chemotherapy"), ("Z51.0", "Encounter for antineoplastic radiation therapy")]:
             ICD10Code.objects.get_or_create(code=code, defaults=dict(description=desc, category="Neoplasms"))
         # the last value is the booking reason the service is charged for (see billing/signals.py)

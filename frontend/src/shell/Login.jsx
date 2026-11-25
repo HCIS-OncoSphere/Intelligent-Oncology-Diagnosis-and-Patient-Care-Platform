@@ -49,7 +49,7 @@ export default function Login({ onDone }) {
 
       <div className="auth-divider"><span>New to OncoSphere?</span></div>
       <Link to="/register" className="auth-secondary">Create account</Link>
-      <p className="auth-fine">Doctor registrations are reviewed by an administrator. Finance staff accounts are created by an administrator.</p>
+      <p className="auth-fine">Doctor registrations are reviewed by an administrator.</p>
     </AuthLayout>
   );
 }

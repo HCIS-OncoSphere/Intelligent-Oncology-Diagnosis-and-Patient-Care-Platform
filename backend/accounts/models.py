@@ -1,7 +1,9 @@
+import os
 import uuid
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 
 
@@ -20,7 +22,6 @@ class User(AbstractUser):
         ADMIN = "admin", "Admin"
         CLINICAL = "clinical", "Clinical Staff"
         PATIENT = "patient", "Patient"
-        FINANCE = "finance", "Financial Staff"
 
     # max_length increased from 10 → 20 to safely accommodate all role values
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PATIENT)
@@ -40,6 +41,31 @@ class User(AbstractUser):
         return f"{self.username} ({self.role})"
 
 
+class PrivateStorage(FileSystemStorage):
+    """Licence scans live outside MEDIA_ROOT and have no URL, so /media/ never serves them.
+    The only way to read one is the admin-only /api/admin/doctor-requests/<id>/license/ endpoint.
+    The folder is read from settings on every use, so tests can override PRIVATE_MEDIA_ROOT."""
+
+    @property
+    def base_location(self):
+        return settings.PRIVATE_MEDIA_ROOT
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+    @property
+    def base_url(self):
+        return None
+
+    def url(self, name):
+        raise ValueError("Private files have no public URL.")
+
+
+def private_storage():
+    return PrivateStorage()
+
+
 def license_upload_to(instance, filename):
     # random name, so a licence scan's URL can't be guessed; the extension is checked by the serializer
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
@@ -57,7 +83,7 @@ class DoctorApplication(models.Model):
         REJECTED = "rejected", "Rejected"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="doctor_applications")
-    license_document = models.FileField(upload_to=license_upload_to)
+    license_document = models.FileField(upload_to=license_upload_to, storage=private_storage)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     rejection_reason = models.CharField(max_length=500, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
