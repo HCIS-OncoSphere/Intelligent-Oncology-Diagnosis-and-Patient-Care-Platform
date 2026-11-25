@@ -1,5 +1,6 @@
 // Shared frame and form pieces for the signed-out pages (sign in, create account).
 import { useEffect, useId, useState } from "react";
+import { Link } from "react-router-dom";
 import { ThemeToggle } from "../shared/ThemeToggle.jsx";
 import { Logo } from "../shared/ui.jsx";
 import "./auth.css";
@@ -71,7 +72,7 @@ export function AuthLayout({ title, children }) {
     <div className="auth">
       <main className="auth-main">
         <div className="auth-top">
-          <div className="auth-brand"><Logo /> OncoSphere</div>
+          <Link to="/" className="auth-brand" title="Back to the home page"><Logo /> OncoSphere</Link>
           <ThemeToggle />
         </div>
         <div className="auth-panel">{children}</div>

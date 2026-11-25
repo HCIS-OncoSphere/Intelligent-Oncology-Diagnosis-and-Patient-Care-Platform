@@ -7,6 +7,7 @@ import { Avatar } from "./shared/Avatar.jsx";
 import { ConfirmDialog } from "./shared/ConfirmDialog.jsx";
 import { ThemeToggle } from "./shared/ThemeToggle.jsx";
 import { Logo } from "./shared/ui.jsx";
+import Home from "./shell/Home.jsx";
 import Login from "./shell/Login.jsx";
 import Register from "./shell/Register.jsx";
 
@@ -65,10 +66,11 @@ export default function App() {
   }, []);
 
   if (checking) return <p className="hint" style={{ padding: 24 }}>Loading…</p>;
-  // signed out: /register shows sign-up; any other URL shows the sign-in form in place,
-  // so a shared link lands on its page after sign-in
+  // signed out: / is the public home page, /register shows sign-up; any other URL shows the sign-in form
+  // in place, so a shared link lands on its page after sign-in
   if (!me) return (
     <Routes>
+      <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register onDone={setMe} />} />
       <Route path="*" element={<Login onDone={setMe} />} />
     </Routes>

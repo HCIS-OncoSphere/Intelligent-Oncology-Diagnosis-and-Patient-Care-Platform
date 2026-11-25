@@ -27,7 +27,8 @@
 /* ---------- form side ---------- */
 .auth-main { display: flex; flex-direction: column; padding: 28px 40px 22px; min-width: 0; }
 .auth-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.auth-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; color: var(--text); }
+.auth-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; color: var(--text); text-decoration: none; border-radius: 10px; }
+.auth-brand:focus-visible { outline: none; box-shadow: var(--focus); }
 .auth-panel { width: 100%; max-width: 420px; margin: auto; padding: 36px 0; }
 .auth-copy { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: .78rem; color: var(--muted); text-align: center; }
 .auth-copy .icon { width: 14px; height: 14px; flex: none; }
