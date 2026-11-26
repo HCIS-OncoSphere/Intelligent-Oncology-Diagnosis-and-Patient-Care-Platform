@@ -7,7 +7,7 @@ import { Badge, Table, useList } from "../../shared/ui.jsx";
 import { useQueryState } from "../../shared/url.js";
 import { ActionButtons, BillCell, STATUSES, hhmm, isYmd, relDay, shortDay } from "./shared.jsx";
 
-const CHIPS = [["", "All"], ["upcoming", "Upcoming"], ...STATUSES.map((s) => [s, s === "no_show" ? "No-show" : s[0].toUpperCase() + s.slice(1)])];
+const CHIPS = [["", "All"], ["upcoming", "Upcoming"], ...STATUSES.filter((s) => s !== "scheduled").map((s) => [s, s === "no_show" ? "No-show" : s[0].toUpperCase() + s.slice(1)])];
 
 export function AppointmentList({ staff, desk, ask, onMove, onPay, onBook, version }) {
   const money = !staff || desk; // doctors don't see the billing column

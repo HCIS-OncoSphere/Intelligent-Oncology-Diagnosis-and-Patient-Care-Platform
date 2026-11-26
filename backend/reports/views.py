@@ -130,7 +130,11 @@ class ExportView(APIView):
         elif kind == "appointments":
             w.writerow(["id", "patient_mrn", "patient_name", "doctor", "doctor_license", "start", "end", "status",
                         "reason"])
-            for a in Appointment.objects.select_related("patient__user", "doctor__user").order_by("start_time"):
+            appointments = Appointment.objects.select_related("patient__user", "doctor__user")
+            # Clinical accounts are doctors, so their download should contain only their own schedule.
+            if request.user.role == "clinical":
+                appointments = appointments.filter(doctor__user=request.user)
+            for a in appointments.order_by("start_time"):
                 w.writerow([a.id, a.patient.mrn, a.patient.user.get_full_name() or a.patient.user.username,
                             str(a.doctor), a.doctor.license_no, timezone.localtime(a.start_time).isoformat(),
                             timezone.localtime(a.end_time).isoformat(), a.status, a.reason])
